@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  type        String   // "INCOME" or "EXPENSE"
+  amount      Float
+  description String?
+  date        DateTime @default(now())
+  category    String?
+  imageUrl    String?
+  status      String   @default("PAID") // "PAID" or "PENDING"
+  dueDate     DateTime?
+  fixedExpenseId String? // Link to FixedExpense for automation tracking
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FixedExpense {
+  id        String   @id @default(uuid())
+  name      String
+  amount    Float    // Estimated amount
+  dueDay    Int
+  category  String?
+  autoPay   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Investment {
+  id                String   @id @default(uuid())
+  name              String
+  initialValue      Float
+  currentValue      Float
+  monthlyReturnRate Float    // Percentage, e.g., 0.5 for 0.5%
+  startDate         DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Goal {
+  id            String   @id @default(uuid())
+  name          String
+  targetAmount  Float
+  currentAmount Float
+  targetDate    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
