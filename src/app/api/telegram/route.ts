@@ -9,6 +9,8 @@ import { NextResponse } from 'next/server';
 // or just re-attach. To be safe, we can clear handlers?
 // For simplicity, we'll define the logic here.
 
+import { put } from '@vercel/blob';
+
 bot.on('photo', async (ctx) => {
     try {
         const photo = ctx.message.photo[ctx.message.photo.length - 1];
@@ -19,7 +21,13 @@ bot.on('photo', async (ctx) => {
 
         ctx.reply('Processando sua imagem... ⏳');
 
-        const transactionData = await parseReceipt(fileLink.href);
+        // 1. Upload to Vercel Blob
+        const response = await fetch(fileLink.href);
+        const blob = await response.blob();
+        const { url } = await put(`receipts/${fileId}.jpg`, blob, { access: 'public' });
+
+        // 2. Parse with OpenAI
+        const transactionData = await parseReceipt(url); // Use the permanent Blob URL
 
         if (!transactionData) {
             ctx.reply('Não consegui ler o recibo. Tente novamente com uma foto mais clara.');
@@ -33,7 +41,7 @@ bot.on('photo', async (ctx) => {
                 date: new Date(transactionData.date),
                 category: transactionData.category,
                 type: transactionData.type,
-                imageUrl: fileLink.href, // Note: Telegram links expire, ideally we should upload to S3/Blob
+                imageUrl: url, // Store the permanent Blob URL
             },
         });
 

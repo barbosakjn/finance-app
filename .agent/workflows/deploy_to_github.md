@@ -2,61 +2,57 @@
 description: How to deploy the Finance App to GitHub and Vercel
 ---
 
-# Deploying Your Finance App
+# Deploying Your Finance App (Premium Setup)
 
-This guide will help you upload your code to GitHub and deploy it to a live URL using Vercel.
+This guide covers deploying your app with **Vercel Postgres** (for data) and **Vercel Blob** (for receipt photos).
 
-## 1. Prepare your Code (Terminal)
+## 1. Push Code to GitHub
 
-First, we need to save your changes to the local git repository.
+First, ensure your latest code is on GitHub.
 
 ```bash
-# Add all files to staging
 git add .
-
-# Commit your changes
-git commit -m "Final Polish: Premium UI and Features"
+git commit -m "Setup Vercel Postgres and Blob"
+git push
 ```
 
-## 2. Create a GitHub Repository
+## 2. Deploy to Vercel
 
-1.  Go to [GitHub.com](https://github.com) and log in.
-2.  Click the **+** icon in the top right and select **New repository**.
-3.  Name it `finance-app` (or whatever you prefer).
-4.  Make it **Private** (recommended for personal finance apps).
-5.  Click **Create repository**.
+1.  Go to [Vercel.com](https://vercel.com) and log in.
+2.  **Add New Project**: Import your `finance-app` repository.
+3.  **Environment Variables**:
+    *   Add your `OPENAI_API_KEY`.
+    *   Add your `TELEGRAM_BOT_TOKEN`.
+    *   Add your `TELEGRAM_WEBHOOK_URL` (This will be your Vercel URL + `/api/telegram`, e.g., `https://finance-app.vercel.app/api/telegram`).
+4.  Click **Deploy**.
 
-## 3. Push Code to GitHub
+## 3. Configure Database (Postgres)
 
-Copy the commands shown on the GitHub page under "…or push an existing repository from the command line". They will look like this (replace `YOUR_USERNAME` with your actual GitHub username):
+1.  In your Vercel Project Dashboard, go to the **Storage** tab.
+2.  Click **Create Database** > **Postgres**.
+3.  Give it a name (e.g., `finance-db`) and region (e.g., `Washington, D.C.`).
+4.  Click **Create**.
+5.  **Connect**: Click **Connect Project** and select your `finance-app`.
+    *   *This automatically adds `POSTGRES_PRISMA_URL` and other variables to your project.*
 
-```bash
-git remote add origin https://github.com/YOUR_USERNAME/finance-app.git
-git branch -M main
-git push -u origin main
-```
+## 4. Configure File Storage (Blob)
 
-Run these commands in your terminal.
+1.  Still in the **Storage** tab, click **Create Database** (or "Create Store") > **Blob**.
+2.  Give it a name (e.g., `finance-images`).
+3.  Click **Create**.
+4.  **Connect**: Click **Connect Project** and select your `finance-app`.
+    *   *This automatically adds `BLOB_READ_WRITE_TOKEN` to your project.*
 
-## 4. Deploy to Vercel (Live URL)
+## 5. Finalize Setup
 
-1.  Go to [Vercel.com](https://vercel.com) and sign up/log in with GitHub.
-2.  Click **Add New...** > **Project**.
-3.  Select your `finance-app` repository from the list (Import).
-4.  **Configure Project**:
-    *   **Framework Preset**: Next.js (should be auto-detected).
-    *   **Environment Variables**:
-        *   Add `DATABASE_URL` if you are using a cloud database (e.g., Vercel Postgres, Supabase, or PlanetScale).
-        *   *Note: SQLite (`dev.db`) does NOT work on Vercel serverless functions. You will need a cloud database for the live version.*
-5.  Click **Deploy**.
+1.  **Redeploy**: Go to the **Deployments** tab, click the three dots on the latest deployment, and select **Redeploy**. This ensures the new environment variables are picked up.
+2.  **Set Telegram Webhook**:
+    *   You need to tell Telegram where your bot lives.
+    *   Open your browser and visit:
+        `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://<YOUR_VERCEL_URL>/api/telegram`
+    *   Replace `<YOUR_BOT_TOKEN>` and `<YOUR_VERCEL_URL>` with your actual values.
 
-## Important Note on Database
-Your local app uses SQLite (`dev.db`), which is a file on your computer. Vercel is "serverless", meaning it doesn't keep files permanently.
-**To make the app work online, you must switch to a cloud database.**
-
-**Recommended for Free Tier:**
-- **Vercel Postgres**: Easy to add directly in the Vercel dashboard.
-- **Supabase**: Excellent free tier Postgres.
-- **Turso**: Great for SQLite-compatible cloud database.
-
-If you just want to see the UI online, the deployment will succeed, but data persistence might fail until you configure a cloud DB.
+## Troubleshooting
+- **Prisma Error**: If you see database errors, you might need to run the migration command in the Vercel Build Settings.
+    - Build Command: `npx prisma generate && next build` (Default is usually fine).
+    - If tables are missing, you may need to run `npx prisma db push` locally pointing to the production DB, or add it to the build command.
