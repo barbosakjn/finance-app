@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type Job = {
   id: string;
@@ -16,7 +16,7 @@ const ROUTE_DELIVERY = 'Ogden Regional - ROUTE';
 const ROUTE_TIME = 'ROUTE';
 const ROUTE_PRICE = 150;
 
-// Decide se um job é ROUTE ou EXTRA olhando os campos
+// Decide se um job é ROUTE olhando os campos
 function isRoute(job: Job) {
   return (
     job.pickup === ROUTE_PICKUP &&
@@ -42,7 +42,7 @@ export default function MyJobsPage() {
   const [time, setTime] = useState('');
   const [price, setPrice] = useState('');
 
-  // data inicial pra gerar 2 semanas de ROUTE
+  // data inicial do período (quinzena)
   const [periodStart, setPeriodStart] = useState('');
 
   async function fetchJobs() {
@@ -66,7 +66,7 @@ export default function MyJobsPage() {
     fetchJobs();
   }, []);
 
-  // criar job (EXTRA ou ROUTE, dependendo dos dados)
+  // helper pra criar job (EXTRA ou ROUTE)
   async function createJob(payload: {
     date: string;
     pickup: string;
@@ -86,6 +86,7 @@ export default function MyJobsPage() {
     }
   }
 
+  // submit de EXTRA job
   async function handleSubmitExtra(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -119,7 +120,7 @@ export default function MyJobsPage() {
     }
   }
 
-  // Gera 2 semanas de ROUTE a partir de periodStart
+  // GERAR 2 SEMANAS DE ROUTE a partir de periodStart
   async function handleGenerateRoutes(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -132,7 +133,7 @@ export default function MyJobsPage() {
     try {
       setGenerating(true);
 
-      const start = new Date(periodStart);
+      const start = new Date(`${periodStart}T12:00:00`);
       const jobsToCreate: {
         date: string;
         pickup: string;
@@ -141,7 +142,7 @@ export default function MyJobsPage() {
         price: number;
       }[] = [];
 
-      // 15 dias (dia 0 até dia 14)
+      // 15 dias (0 até 14) = quinzena
       for (let i = 0; i < 15; i++) {
         const d = new Date(start);
         d.setDate(start.getDate() + i);
@@ -168,7 +169,6 @@ export default function MyJobsPage() {
         });
       }
 
-      // dispara todas as requisições (POST /api/jobs)
       for (const job of jobsToCreate) {
         await createJob(job);
       }
@@ -182,6 +182,7 @@ export default function MyJobsPage() {
     }
   }
 
+  // apagar job (ROUTE ou EXTRA)
   async function handleDelete(jobId: string) {
     setError(null);
     try {
@@ -204,6 +205,24 @@ export default function MyJobsPage() {
       setOpenMenuId(null);
     }
   }
+
+  // TOTAL DA QUINZENA (só se periodStart estiver preenchido)
+  const periodTotal = useMemo(() => {
+    if (!periodStart) return null;
+
+    const start = new Date(`${periodStart}T00:00:00`);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 14); // 15 dias (0..14)
+
+    let sum = 0;
+    for (const job of jobs) {
+      const d = new Date(job.date);
+      if (d >= start && d <= end) {
+        sum += job.price;
+      }
+    }
+    return sum;
+  }, [jobs, periodStart]);
 
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center px-4 py-8">
@@ -245,6 +264,15 @@ export default function MyJobsPage() {
               {generating ? 'Gerando...' : 'Gerar 2 semanas'}
             </button>
           </form>
+
+          {periodStart && periodTotal !== null && (
+            <div className="mt-2 text-sm text-zinc-300">
+              Total da quinzena ({periodStart} até 15 dias depois):{' '}
+              <span className="font-semibold text-green-400">
+                ${periodTotal.toFixed(2)}
+              </span>
+            </div>
+          )}
         </section>
 
         {/* FORM EXTRA JOB */}
@@ -329,9 +357,19 @@ export default function MyJobsPage() {
           </form>
         </section>
 
-        {/* LISTA DE JOBS COM 3 PONTINHOS */}
+        {/* LISTA DE JOBS COM 3 PONTINHOS + TOTAL NO RODAPÉ */}
         <section className="bg-zinc-900 rounded-xl p-4 space-y-3">
-          <h2 className="font-semibold text-lg">Todos os jobs</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-lg">Todos os jobs</h2>
+            {periodStart && periodTotal !== null && (
+              <div className="text-sm text-zinc-300">
+                Quinzena atual:{' '}
+                <span className="font-semibold text-green-400">
+                  ${periodTotal.toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
 
           {loading ? (
             <p className="text-sm text-zinc-400">Carregando...</p>
@@ -375,7 +413,9 @@ export default function MyJobsPage() {
                             <button
                               type="button"
                               onClick={() =>
-                                setOpenMenuId(isMenuOpen ? null : job.id)
+                                setOpenMenuId(
+                                  isMenuOpen ? null : job.id
+                                )
                               }
                               className="px-2 py-1 rounded-full hover:bg-zinc-800"
                             >
@@ -388,7 +428,6 @@ export default function MyJobsPage() {
                                   type="button"
                                   className="w-full text-left px-3 py-2 text-xs hover:bg-zinc-800"
                                   onClick={() => {
-                                    // preencher o form lá de cima
                                     setDate(job.date.split('T')[0]);
                                     setPickup(job.pickup);
                                     setDelivery(job.delivery);
