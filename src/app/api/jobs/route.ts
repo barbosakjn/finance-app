@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// GET /api/jobs  -> lista todos os trabalhos extras
+// GET /api/jobs  -> lista todos os jobs (ROUTE + EXTRA)
 export async function GET() {
   try {
     const jobs = await prisma.jobExtra.findMany({
@@ -18,7 +18,7 @@ export async function GET() {
   }
 }
 
-// POST /api/jobs -> cria um novo trabalho extra
+// POST /api/jobs -> cria um job (pode ser ROUTE ou EXTRA)
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -31,13 +31,30 @@ export async function POST(req: Request) {
       );
     }
 
+    const parsedDate = new Date(date);
+    const numericPrice = Number(price);
+
+    // cria o JobExtra
     const job = await prisma.jobExtra.create({
       data: {
-        date: new Date(date),
+        date: parsedDate,
         pickup,
         delivery,
-        time: time ?? '', // pode ser vazio
-        price: Number(price),
+        time: time ?? '',
+        price: numericPrice,
+      },
+    });
+
+    // cria também uma Transaction de INCOME (pra entrar no saldo)
+    await prisma.transaction.create({
+      data: {
+        type: 'INCOME',
+        amount: numericPrice,
+        description: `${pickup} → ${delivery}${time ? ` (${time})` : ''}`,
+        date: parsedDate,
+        category: 'Job',
+        imageUrl: null,
+        status: 'PAID',
       },
     });
 
@@ -46,6 +63,33 @@ export async function POST(req: Request) {
     console.error('Error creating job:', error);
     return NextResponse.json(
       { error: 'Erro ao criar job' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/jobs?id=JOB_ID  -> apaga um job
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Job id é obrigatório' },
+        { status: 400 }
+      );
+    }
+
+    await prisma.jobExtra.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('Error deleting job:', error);
+    return NextResponse.json(
+      { error: 'Erro ao apagar job' },
       { status: 500 }
     );
   }
