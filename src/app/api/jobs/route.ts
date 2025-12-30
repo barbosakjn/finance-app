@@ -31,10 +31,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const parsedDate = new Date(date);
+    // ⚠️ CORREÇÃO DE FUSO: força meio-dia
+    // date vem como "yyyy-mm-dd", então viramos "yyyy-mm-ddT12:00:00"
+    const parsedDate = new Date(`${date}T12:00:00`);
     const numericPrice = Number(price);
 
-    // cria o JobExtra
+    // 1) cria o JobExtra
     const job = await prisma.jobExtra.create({
       data: {
         date: parsedDate,
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // cria também uma Transaction de INCOME (pra entrar no saldo)
+    // 2) cria também uma Transaction de INCOME pra entrar no saldo
     await prisma.transaction.create({
       data: {
         type: 'INCOME',
