@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Search, Plus, Filter, MoreHorizontal, Edit, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
+type SortBy = "NEWEST" | "OLDEST" | "HIGHEST" | "LOWEST";
+
 export default function HistoryView() {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [filter, setFilter] = useState<"EXPENSE" | "INCOME">("EXPENSE");
@@ -41,6 +43,8 @@ export default function HistoryView() {
         type: 'EXPENSE',
         date: new Date().toISOString().split('T')[0]
     });
+
+    const [sortBy, setSortBy] = useState<SortBy>("NEWEST");
 
     useEffect(() => {
         fetchTransactions();
@@ -107,8 +111,54 @@ export default function HistoryView() {
         }
     };
 
-    const filteredTransactions = transactions.filter(t => t.type === filter);
-    const totalBalance = transactions.reduce((acc, t) => t.type === 'INCOME' ? acc + t.amount : acc - t.amount, 0);
+    const filteredTransactions = useMemo(
+        () => transactions.filter(t => t.type === filter),
+        [transactions, filter]
+    );
+
+    const sortedTransactions = useMemo(() => {
+        const items = [...filteredTransactions];
+
+        items.sort((a, b) => {
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+
+            switch (sortBy) {
+                case "NEWEST":
+                    return dateB - dateA; // mais recente primeiro
+                case "OLDEST":
+                    return dateA - dateB; // mais antigo primeiro
+                case "HIGHEST":
+                    return b.amount - a.amount; // maior valor primeiro
+                case "LOWEST":
+                    return a.amount - b.amount; // menor valor primeiro
+                default:
+                    return 0;
+            }
+        });
+
+        return items;
+    }, [filteredTransactions, sortBy]);
+
+    const totalBalance = transactions.reduce(
+        (acc, t) => t.type === 'INCOME' ? acc + t.amount : acc - t.amount,
+        0
+    );
+
+    const sortLabel = useMemo(() => {
+        switch (sortBy) {
+            case "NEWEST":
+                return "Newest";
+            case "OLDEST":
+                return "Oldest";
+            case "HIGHEST":
+                return "Highest amount";
+            case "LOWEST":
+                return "Lowest amount";
+            default:
+                return "Newest";
+        }
+    }, [sortBy]);
 
     return (
         <div className="flex flex-col h-full bg-background text-foreground">
@@ -148,15 +198,40 @@ export default function HistoryView() {
                             Earnings
                         </button>
                     </div>
-                    <button className="flex items-center gap-1 text-xs text-muted-foreground">
-                        Sort by <Filter className="h-3 w-3" />
-                    </button>
+
+                    {/* Sort by dropdown */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-1 text-xs text-muted-foreground">
+                                Sort by: <span className="font-semibold">{sortLabel}</span>
+                                <Filter className="h-3 w-3" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setSortBy("NEWEST")}>
+                                Newest
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSortBy("OLDEST")}>
+                                Oldest
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSortBy("HIGHEST")}>
+                                Highest amount
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSortBy("LOWEST")}>
+                                Lowest amount
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 {/* List */}
                 <div className="space-y-4">
-                    {filteredTransactions.map((t) => (
-                        <div key={t.id} className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-border">
+                    {sortedTransactions.map((t) => (
+                        <div
+                            key={t.id}
+                            className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-border"
+                        >
                             <div className="flex items-center gap-4">
                                 <div className="h-10 w-10 bg-secondary rounded-lg flex items-center justify-center text-xl">
                                     🧾
@@ -171,7 +246,9 @@ export default function HistoryView() {
                                     <p className={`font-bold ${t.type === 'INCOME' ? 'text-green-500' : 'text-red-500'}`}>
                                         {t.type === 'INCOME' ? '+' : '-'}${t.amount.toFixed(2)}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">{new Date(t.date).toLocaleDateString()}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {new Date(t.date).toLocaleDateString()}
+                                    </p>
                                 </div>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -186,7 +263,10 @@ export default function HistoryView() {
                                             <Edit className="mr-2 h-4 w-4" /> Edit
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
-                                        <DropdownMenuItem onClick={() => handleDelete(t.id)} className="text-destructive">
+                                        <DropdownMenuItem
+                                            onClick={() => handleDelete(t.id)}
+                                            className="text-destructive"
+                                        >
                                             <Trash className="mr-2 h-4 w-4" /> Delete
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
@@ -194,8 +274,10 @@ export default function HistoryView() {
                             </div>
                         </div>
                     ))}
-                    {filteredTransactions.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">No {filter.toLowerCase()} found.</p>
+                    {sortedTransactions.length === 0 && (
+                        <p className="text-center text-muted-foreground py-8">
+                            No {filter.toLowerCase()} found.
+                        </p>
                     )}
                 </div>
             </div>
@@ -221,7 +303,9 @@ export default function HistoryView() {
                             <Label className="text-right">Type</Label>
                             <Select
                                 value={newTransaction.type}
-                                onValueChange={(val: "EXPENSE" | "INCOME") => setNewTransaction({ ...newTransaction, type: val })}
+                                onValueChange={(val: "EXPENSE" | "INCOME") =>
+                                    setNewTransaction({ ...newTransaction, type: val })
+                                }
                             >
                                 <SelectTrigger className="col-span-3">
                                     <SelectValue placeholder="Select type" />
@@ -233,20 +317,58 @@ export default function HistoryView() {
                             </Select>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="desc" className="text-right">Description</Label>
-                            <Input id="desc" value={newTransaction.description} onChange={e => setNewTransaction({ ...newTransaction, description: e.target.value })} className="col-span-3" />
+                            <Label htmlFor="desc" className="text-right">
+                                Description
+                            </Label>
+                            <Input
+                                id="desc"
+                                value={newTransaction.description}
+                                onChange={e =>
+                                    setNewTransaction({ ...newTransaction, description: e.target.value })
+                                }
+                                className="col-span-3"
+                            />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="amount" className="text-right">Amount</Label>
-                            <Input id="amount" type="number" value={newTransaction.amount} onChange={e => setNewTransaction({ ...newTransaction, amount: e.target.value })} className="col-span-3" />
+                            <Label htmlFor="amount" className="text-right">
+                                Amount
+                            </Label>
+                            <Input
+                                id="amount"
+                                type="number"
+                                value={newTransaction.amount}
+                                onChange={e =>
+                                    setNewTransaction({ ...newTransaction, amount: e.target.value })
+                                }
+                                className="col-span-3"
+                            />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="cat" className="text-right">Category</Label>
-                            <Input id="cat" value={newTransaction.category} onChange={e => setNewTransaction({ ...newTransaction, category: e.target.value })} className="col-span-3" />
+                            <Label htmlFor="cat" className="text-right">
+                                Category
+                            </Label>
+                            <Input
+                                id="cat"
+                                value={newTransaction.category}
+                                onChange={e =>
+                                    setNewTransaction({ ...newTransaction, category: e.target.value })
+                                }
+                                className="col-span-3"
+                            />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="date" className="text-right">Date</Label>
-                            <Input id="date" type="date" value={newTransaction.date} onChange={e => setNewTransaction({ ...newTransaction, date: e.target.value })} className="col-span-3" />
+                            <Label htmlFor="date" className="text-right">
+                                Date
+                            </Label>
+                            <Input
+                                id="date"
+                                type="date"
+                                value={newTransaction.date}
+                                onChange={e =>
+                                    setNewTransaction({ ...newTransaction, date: e.target.value })
+                                }
+                                className="col-span-3"
+                            />
                         </div>
                     </div>
                     <DialogFooter>
@@ -263,40 +385,68 @@ export default function HistoryView() {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-description" className="text-right">Description</Label>
+                            <Label htmlFor="edit-description" className="text-right">
+                                Description
+                            </Label>
                             <Input
                                 id="edit-description"
                                 value={editingTransaction?.description || ''}
-                                onChange={(e) => setEditingTransaction({ ...editingTransaction, description: e.target.value })}
+                                onChange={(e) =>
+                                    setEditingTransaction({
+                                        ...editingTransaction,
+                                        description: e.target.value,
+                                    })
+                                }
                                 className="col-span-3"
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-amount" className="text-right">Amount</Label>
+                            <Label htmlFor="edit-amount" className="text-right">
+                                Amount
+                            </Label>
                             <Input
                                 id="edit-amount"
                                 type="number"
                                 value={editingTransaction?.amount || ''}
-                                onChange={(e) => setEditingTransaction({ ...editingTransaction, amount: e.target.value })}
+                                onChange={(e) =>
+                                    setEditingTransaction({
+                                        ...editingTransaction,
+                                        amount: e.target.value,
+                                    })
+                                }
                                 className="col-span-3"
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-category" className="text-right">Category</Label>
+                            <Label htmlFor="edit-category" className="text-right">
+                                Category
+                            </Label>
                             <Input
                                 id="edit-category"
                                 value={editingTransaction?.category || ''}
-                                onChange={(e) => setEditingTransaction({ ...editingTransaction, category: e.target.value })}
+                                onChange={(e) =>
+                                    setEditingTransaction({
+                                        ...editingTransaction,
+                                        category: e.target.value,
+                                    })
+                                }
                                 className="col-span-3"
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-date" className="text-right">Date</Label>
+                            <Label htmlFor="edit-date" className="text-right">
+                                Date
+                            </Label>
                             <Input
                                 id="edit-date"
                                 type="date"
                                 value={editingTransaction?.date || ''}
-                                onChange={(e) => setEditingTransaction({ ...editingTransaction, date: e.target.value })}
+                                onChange={(e) =>
+                                    setEditingTransaction({
+                                        ...editingTransaction,
+                                        date: e.target.value,
+                                    })
+                                }
                                 className="col-span-3"
                             />
                         </div>
