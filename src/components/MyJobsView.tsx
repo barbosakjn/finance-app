@@ -121,7 +121,7 @@ export default function MyJobsView() {
             return;
         }
 
-        if (!confirm(`Deseja gerar automaticamente os jobs de rota (seg-sex) por 15 dias a partir de ${periodStart}? Isso apagará rotas existentes nesse período.`)) {
+        if (!confirm(`Deseja gerar automaticamente os jobs de rota (seg-sex) por 14 dias a partir de ${periodStart}? Isso apagará rotas existentes nesse período.`)) {
             return;
         }
 
@@ -279,7 +279,7 @@ export default function MyJobsView() {
 
         const start = new Date(periodStart);
         const end = new Date(start);
-        end.setDate(start.getDate() + 14); // 15 dias corridos (de 0 a 14)
+        end.setDate(start.getDate() + 13); // 14 dias corridos (de 0 a 13)
 
         try {
             setLoading(true);
@@ -361,7 +361,7 @@ export default function MyJobsView() {
                         disabled={loading}
                     >
                         <Map className="h-4 w-4" />
-                        Gerar Rotas (15 dias)
+                        Gerar Rotas (14 dias)
                     </Button>
                 </section>
 

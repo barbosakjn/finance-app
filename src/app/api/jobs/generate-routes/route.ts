@@ -19,10 +19,9 @@ export async function POST(req: Request) {
         start.setUTCHours(12, 0, 0, 0);
 
         // Limpa rotas existentes no período para evitar duplicidade
-        // Consideramos "rota" jobs com time="ROUTE" ou delivery contendo "ROUTE"
-        // Aqui vamos simplificar e apagar por data e time="ROUTE" que é o padrão que estamos criando
+        // Ajustado para 14 dias (2 semanas exatas), para não invadir a próxima segunda-feira
         const endDate = new Date(start);
-        endDate.setDate(start.getDate() + 15);
+        endDate.setDate(start.getDate() + 14);
 
         await prisma.jobExtra.deleteMany({
             where: {
@@ -36,8 +35,8 @@ export async function POST(req: Request) {
 
         const jobsToCreate = [];
 
-        // Gera 15 dias a partir da data de início
-        for (let i = 0; i < 15; i++) {
+        // Gera 14 dias a partir da data de início (0 a 13)
+        for (let i = 0; i < 14; i++) {
             const current = new Date(start);
             current.setDate(start.getDate() + i);
 
