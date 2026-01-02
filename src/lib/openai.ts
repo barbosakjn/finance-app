@@ -22,13 +22,14 @@ export async function parseReceipt(imageUrl: string): Promise<ParsedTransaction 
           content: `You are a financial assistant. Analyze the provided image (receipt, invoice, or screenshot). 
           Extract the following information:
           - Total amount (number)
-          - Date (ISO 8601 format YYYY-MM-DD, use today's date if not found)
+          - Date (ISO 8601 format YYYY-MM-DD, use today's date ${new Date().toISOString().split('T')[0]} if not found or if incomplete)
           - Description (short summary)
           - Category (e.g., Food, Transport, Utilities, Salary, Investment, etc.)
           - Type (INCOME or EXPENSE)
           
           Return ONLY a valid JSON object with keys: amount, date, description, category, type.
-          If you cannot determine the values, estimate or use sensible defaults.
+          If you cannot determine the values, estimate or use sensible defaults based on the current context.
+          The current date is ${new Date().toISOString().split('T')[0]}. Ensure the year is correct (e.g. 2026).
           `
         },
         {
