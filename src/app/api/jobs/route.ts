@@ -64,7 +64,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Error creating job:', error);
     return NextResponse.json(
-      { error: 'Erro ao criar job' },
+      { error: `Erro ao criar job: ${error instanceof Error ? error.message : String(error)}` },
       { status: 500 }
     );
   }
