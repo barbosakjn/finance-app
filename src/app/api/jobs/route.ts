@@ -31,9 +31,25 @@ export async function POST(req: Request) {
       );
     }
 
-    // ⚠️ CORREÇÃO DE FUSO: força meio-dia
-    // date vem como "yyyy-mm-dd", então viramos "yyyy-mm-ddT12:00:00"
-    const parsedDate = new Date(`${date}T12:00:00`);
+    // ⚠️ CORREÇÃO DE FUSO E FORMATO
+    // Tenta validar o formato YYYY-MM-DD antes de forçar o horário
+    let parsedDate: Date;
+
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      // Se for exatamente YYYY-MM-DD, adicionamos meio-dia
+      parsedDate = new Date(`${date}T12:00:00`);
+    } else {
+      // Tenta parsear direto (caso venha ISO ou outro formato)
+      parsedDate = new Date(date);
+    }
+
+    if (isNaN(parsedDate.getTime())) {
+      return NextResponse.json(
+        { error: `Data inválida recebida: ${date}` },
+        { status: 400 }
+      );
+    }
+
     const numericPrice = Number(price);
 
     // 1) cria o JobExtra
