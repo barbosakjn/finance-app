@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { MoreHorizontal, Plus, Map, Briefcase } from "lucide-react";
+import { MoreHorizontal, Plus, Map, Briefcase, Trash2, Download, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Job = {
@@ -26,6 +26,8 @@ export default function MyJobsView() {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
 
     // data de início da quinzena
     const [periodStart, setPeriodStart] = useState(
@@ -59,6 +61,7 @@ export default function MyJobsView() {
                         new Date(a.date).getTime() - new Date(b.date).getTime()
                 )
             );
+            setSelectedJobs(new Set()); // Reset selection
         } catch (err: any) {
             console.error(err);
             setError(err.message || "Erro ao carregar jobs.");
@@ -118,7 +121,7 @@ export default function MyJobsView() {
             return;
         }
 
-        if (!confirm(`Deseja gerar automaticamente os jobs de rota (seg-sex) por 15 dias a partir de ${periodStart}?`)) {
+        if (!confirm(`Deseja gerar automaticamente os jobs de rota (seg-sex) por 15 dias a partir de ${periodStart}? Isso apagará rotas existentes nesse período.`)) {
             return;
         }
 
@@ -148,7 +151,7 @@ export default function MyJobsView() {
         }
     }
 
-    // ===== DELETAR JOB =====
+    // ===== DELETAR JOB (SINGLE) =====
     async function handleDeleteJob(id: string) {
         if (!confirm("Tem certeza que deseja apagar esse job?")) return;
 
@@ -171,6 +174,85 @@ export default function MyJobsView() {
             setLoading(false);
         }
     }
+
+    // ===== DELETAR JOBS (BATCH) =====
+    async function handleBatchDelete() {
+        if (selectedJobs.size === 0) return;
+        if (!confirm(`Tem certeza que deseja apagar ${selectedJobs.size} jobs selecionados?`)) return;
+
+        try {
+            setLoading(true);
+            const ids = Array.from(selectedJobs).join(",");
+            const res = await fetch(`/api/jobs?ids=${ids}`, {
+                method: "DELETE",
+            });
+
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.error || "Erro ao apagar jobs");
+            }
+
+            await loadJobs();
+            setIsSelectionMode(false);
+        } catch (err: any) {
+            console.error(err);
+            alert(err.message || "Erro ao apagar jobs");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // ===== EXPORTAR CSV =====
+    function handleExportCSV() {
+        if (jobs.length === 0) {
+            alert("Não há jobs para exportar.");
+            return;
+        }
+
+        const headers = ["Date", "Type", "Pickup", "Delivery", "Time/Obs", "Price"];
+        const rows = jobs.map(job => [
+            new Date(job.date).toLocaleDateString(),
+            isRoute(job) ? "ROUTE" : "EXTRA",
+            `"${job.pickup}"`, // Escape quotes
+            `"${job.delivery}"`,
+            `"${job.time}"`,
+            job.price.toFixed(2)
+        ]);
+
+        const csvContent = [
+            headers.join(","),
+            ...rows.map(row => row.join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `my_jobs_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // ===== SELEÇÃO =====
+    const toggleSelection = (id: string) => {
+        const newSet = new Set(selectedJobs);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedJobs(newSet);
+    };
+
+    const toggleAll = () => {
+        if (selectedJobs.size === jobs.length) {
+            setSelectedJobs(new Set());
+        } else {
+            setSelectedJobs(new Set(jobs.map(j => j.id)));
+        }
+    };
 
     // ===== TOTAL / OPERATIONAL COST / FINAL TOTAL =====
     const subtotal = useMemo(
@@ -272,25 +354,15 @@ export default function MyJobsView() {
                         </p>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <Button
-                            onClick={handleGenerateRoutes}
-                            variant="outline"
-                            className="flex-1 gap-2 text-xs h-10"
-                            disabled={loading}
-                        >
-                            <Map className="h-4 w-4" />
-                            Gerar Rotas (15 dias)
-                        </Button>
-                        <Button
-                            onClick={handleImportPeriod}
-                            className="flex-1 gap-2 text-xs h-10 bg-primary text-primary-foreground hover:bg-primary/90"
-                            disabled={loading}
-                        >
-                            <Briefcase className="h-4 w-4" />
-                            Importar p/ Saldo
-                        </Button>
-                    </div>
+                    <Button
+                        onClick={handleGenerateRoutes}
+                        variant="outline"
+                        className="w-full gap-2 text-xs h-10"
+                        disabled={loading}
+                    >
+                        <Map className="h-4 w-4" />
+                        Gerar Rotas (15 dias)
+                    </Button>
                 </section>
 
                 {/* FORM DE EXTRA JOB */}
@@ -378,11 +450,42 @@ export default function MyJobsView() {
                 {/* LISTA DE TODOS OS JOBS */}
                 <section className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="font-semibold text-sm">Todos os jobs</h2>
-                        <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full">
-                            {jobs.length} itens
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <h2 className="font-semibold text-sm">Todos os jobs</h2>
+                            <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full">
+                                {jobs.length} itens
+                            </span>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsSelectionMode(!isSelectionMode)}
+                                className={isSelectionMode ? "bg-secondary" : ""}
+                            >
+                                {isSelectionMode ? "Cancelar" : "Selecionar"}
+                            </Button>
+                            {isSelectionMode && (
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={handleBatchDelete}
+                                    disabled={selectedJobs.size === 0}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    Apagar ({selectedJobs.size})
+                                </Button>
+                            )}
+                        </div>
                     </div>
+
+                    {isSelectionMode && (
+                        <div className="mb-2 flex items-center gap-2">
+                            <button onClick={toggleAll} className="text-xs text-primary hover:underline">
+                                {selectedJobs.size === jobs.length ? "Desmarcar todos" : "Selecionar todos"}
+                            </button>
+                        </div>
+                    )}
 
                     {loading && (
                         <p className="text-sm text-muted-foreground text-center py-4">Carregando jobs…</p>
@@ -400,13 +503,23 @@ export default function MyJobsView() {
                         <div className="space-y-3">
                             {jobs.map((job) => {
                                 const routeJob = isRoute(job);
+                                const isSelected = selectedJobs.has(job.id);
+
                                 return (
                                     <div
                                         key={job.id}
-                                        className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-background/50"
+                                        className={`flex flex-col gap-2 p-3 rounded-lg border transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border bg-background/50'}`}
+                                        onClick={() => {
+                                            if (isSelectionMode) toggleSelection(job.id);
+                                        }}
                                     >
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-2">
+                                                {isSelectionMode && (
+                                                    <div className={`h-4 w-4 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground'}`}>
+                                                        {isSelected && <CheckSquare className="h-3 w-3 text-primary-foreground" />}
+                                                    </div>
+                                                )}
                                                 <span className="text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded">
                                                     {new Date(job.date).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', weekday: 'short' })}
                                                 </span>
@@ -424,19 +537,21 @@ export default function MyJobsView() {
                                                 <span className="font-bold text-sm text-foreground">
                                                     ${job.price.toFixed(2)}
                                                 </span>
-                                                <details className="relative">
-                                                    <summary className="list-none flex items-center justify-center h-6 w-6 hover:bg-secondary rounded cursor-pointer">
-                                                        <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                                                    </summary>
-                                                    <div className="absolute right-0 mt-1 w-32 bg-popover border border-border rounded-md shadow-lg text-xs z-10 py-1">
-                                                        <button
-                                                            className="block w-full text-left px-3 py-2 hover:bg-secondary text-red-400"
-                                                            onClick={() => handleDeleteJob(job.id)}
-                                                        >
-                                                            Apagar
-                                                        </button>
-                                                    </div>
-                                                </details>
+                                                {!isSelectionMode && (
+                                                    <details className="relative" onClick={(e) => e.stopPropagation()}>
+                                                        <summary className="list-none flex items-center justify-center h-6 w-6 hover:bg-secondary rounded cursor-pointer">
+                                                            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                                                        </summary>
+                                                        <div className="absolute right-0 mt-1 w-32 bg-popover border border-border rounded-md shadow-lg text-xs z-10 py-1">
+                                                            <button
+                                                                className="block w-full text-left px-3 py-2 hover:bg-secondary text-red-400"
+                                                                onClick={() => handleDeleteJob(job.id)}
+                                                            >
+                                                                Apagar
+                                                            </button>
+                                                        </div>
+                                                    </details>
+                                                )}
                                             </div>
                                         </div>
 
@@ -474,6 +589,28 @@ export default function MyJobsView() {
                                     <span className="text-green-400">${finalTotal.toFixed(2)}</span>
                                 </div>
                             </div>
+
+                            {/* ACTION BUTTONS AT BOTTOM */}
+                            <div className="pt-6 flex flex-col sm:flex-row gap-3">
+                                <Button
+                                    onClick={handleExportCSV}
+                                    variant="outline"
+                                    className="flex-1 gap-2 text-xs h-10"
+                                    disabled={loading || jobs.length === 0}
+                                >
+                                    <Download className="h-4 w-4" />
+                                    Exportar CSV
+                                </Button>
+                                <Button
+                                    onClick={handleImportPeriod}
+                                    className="flex-1 gap-2 text-xs h-10 bg-primary text-primary-foreground hover:bg-primary/90"
+                                    disabled={loading}
+                                >
+                                    <Briefcase className="h-4 w-4" />
+                                    Importar p/ Saldo
+                                </Button>
+                            </div>
+
                         </div>
                     )}
                 </section>

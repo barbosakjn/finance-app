@@ -20,7 +20,7 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen bg-background text-foreground pb-20">
             <main className="max-w-md mx-auto min-h-screen bg-background relative shadow-2xl overflow-hidden border-x border-border">
-                {activeTab === "home" && <HomeView />}
+                {activeTab === "home" && <HomeView onNavigate={setActiveTab} />}
                 {activeTab === "history" && <HistoryView />}
                 {activeTab === "my-jobs" && <MyJobsView />}
                 {activeTab === "savings" && <SavingsView />}

@@ -75,10 +75,19 @@ export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+    const ids = searchParams.get('ids'); // Suporte a múltiplos IDs: ?ids=id1,id2,id3
+
+    if (ids) {
+      const idList = ids.split(',').filter(Boolean);
+      await prisma.jobExtra.deleteMany({
+        where: { id: { in: idList } },
+      });
+      return NextResponse.json({ ok: true, count: idList.length });
+    }
 
     if (!id) {
       return NextResponse.json(
-        { error: 'Job id é obrigatório' },
+        { error: 'Job id ou ids são obrigatórios' },
         { status: 400 }
       );
     }

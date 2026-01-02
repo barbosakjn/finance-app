@@ -18,6 +18,22 @@ export async function POST(req: Request) {
         // Vamos usar meio-dia para segurança, igual ao endpoint de jobs
         start.setUTCHours(12, 0, 0, 0);
 
+        // Limpa rotas existentes no período para evitar duplicidade
+        // Consideramos "rota" jobs com time="ROUTE" ou delivery contendo "ROUTE"
+        // Aqui vamos simplificar e apagar por data e time="ROUTE" que é o padrão que estamos criando
+        const endDate = new Date(start);
+        endDate.setDate(start.getDate() + 15);
+
+        await prisma.jobExtra.deleteMany({
+            where: {
+                date: {
+                    gte: start,
+                    lt: endDate,
+                },
+                time: "ROUTE",
+            },
+        });
+
         const jobsToCreate = [];
 
         // Gera 15 dias a partir da data de início

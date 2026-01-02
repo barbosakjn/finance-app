@@ -22,7 +22,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
-export default function HomeView() {
+interface HomeViewProps {
+    onNavigate?: (tab: "home" | "history" | "savings" | "settings" | "my-jobs") => void;
+}
+
+export default function HomeView({ onNavigate }: HomeViewProps) {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [balance, setBalance] = useState(0);
     const [editingTransaction, setEditingTransaction] = useState<any>(null);
@@ -150,7 +154,12 @@ export default function HomeView() {
             <div className="px-6 flex-1">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-lg text-foreground">Recent Transactions</h3>
-                    <button className="text-sm text-primary font-medium">See all</button>
+                    <button
+                        onClick={() => onNavigate?.("history")}
+                        className="text-sm text-primary font-medium hover:underline"
+                    >
+                        See all
+                    </button>
                 </div>
 
                 <div className="space-y-4">
