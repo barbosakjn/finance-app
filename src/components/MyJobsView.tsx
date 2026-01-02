@@ -1,0 +1,483 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { MoreHorizontal, Plus, Map, Briefcase } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+type Job = {
+    id: string;
+    date: string; // ISO string vinda da API
+    pickup: string;
+    delivery: string;
+    time: string;
+    price: number;
+    type: "ROUTE" | "EXTRA";
+};
+
+type NewJobForm = {
+    date: string;
+    pickup: string;
+    delivery: string;
+    time: string;
+    price: string;
+};
+
+export default function MyJobsView() {
+    const [jobs, setJobs] = useState<Job[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // data de início da quinzena
+    const [periodStart, setPeriodStart] = useState(
+        new Date().toISOString().split("T")[0]
+    );
+
+    // formulário de extra job
+    const [newJob, setNewJob] = useState<NewJobForm>({
+        date: new Date().toISOString().split("T")[0],
+        pickup: "",
+        delivery: "",
+        time: "",
+        price: "",
+    });
+
+    // ===== CARREGAR JOBS =====
+    useEffect(() => {
+        loadJobs();
+    }, []);
+
+    async function loadJobs() {
+        try {
+            setLoading(true);
+            setError(null);
+            const res = await fetch("/api/jobs");
+            if (!res.ok) throw new Error("Erro ao carregar jobs");
+            const data = (await res.json()) as Job[];
+            setJobs(
+                data.sort(
+                    (a, b) =>
+                        new Date(a.date).getTime() - new Date(b.date).getTime()
+                )
+            );
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Erro ao carregar jobs.");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // ===== ADICIONAR EXTRA JOB =====
+    async function handleAddExtraJob() {
+        if (!newJob.date || !newJob.price) {
+            alert("Data e preço são obrigatórios");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const res = await fetch("/api/jobs", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    date: new Date(newJob.date),
+                    pickup: newJob.pickup || "—",
+                    delivery: newJob.delivery || "—",
+                    time: newJob.time || "EXTRA",
+                    price: parseFloat(newJob.price),
+                    type: "EXTRA",
+                }),
+            });
+
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.error || "Erro ao adicionar job extra");
+            }
+
+            // limpa form e recarrega lista
+            setNewJob((prev) => ({
+                ...prev,
+                pickup: "",
+                delivery: "",
+                time: "",
+                price: "",
+            }));
+            await loadJobs();
+        } catch (err: any) {
+            console.error(err);
+            alert(err.message || "Erro ao adicionar job extra");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // ===== GERAR ROTAS AUTOMÁTICAS =====
+    async function handleGenerateRoutes() {
+        if (!periodStart) {
+            alert("Defina a data de início da quinzena primeiro.");
+            return;
+        }
+
+        if (!confirm(`Deseja gerar automaticamente os jobs de rota (seg-sex) por 15 dias a partir de ${periodStart}?`)) {
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const res = await fetch("/api/jobs/generate-routes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    startDate: periodStart,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || "Erro ao gerar rotas.");
+            }
+
+            alert(data.message || "Rotas geradas com sucesso!");
+            await loadJobs();
+        } catch (err: any) {
+            console.error(err);
+            alert(err.message || "Erro ao gerar rotas.");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // ===== DELETAR JOB =====
+    async function handleDeleteJob(id: string) {
+        if (!confirm("Tem certeza que deseja apagar esse job?")) return;
+
+        try {
+            setLoading(true);
+            const res = await fetch(`/api/jobs?id=${id}`, {
+                method: "DELETE",
+            });
+
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.error || "Erro ao apagar job");
+            }
+
+            await loadJobs();
+        } catch (err: any) {
+            console.error(err);
+            alert(err.message || "Erro ao apagar job");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // ===== TOTAL / OPERATIONAL COST / FINAL TOTAL =====
+    const subtotal = useMemo(
+        () => jobs.reduce((sum, job) => sum + job.price, 0),
+        [jobs]
+    );
+
+    const operationalCost = useMemo(
+        () => subtotal * 0.07,
+        [subtotal]
+    );
+
+    const finalTotal = useMemo(
+        () => subtotal - operationalCost,
+        [subtotal, operationalCost]
+    );
+
+    // ===== IMPORTAR QUINZENA PARA O BALANCE =====
+    async function handleImportPeriod() {
+        if (!periodStart) {
+            alert("Defina a data de início da quinzena primeiro.");
+            return;
+        }
+
+        const start = new Date(periodStart);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 14); // 15 dias corridos (de 0 a 14)
+
+        try {
+            setLoading(true);
+            const res = await fetch("/api/jobs/import-period", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    startDate: start.toISOString(),
+                    endDate: end.toISOString(),
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert(data.error || "Erro ao importar quinzena.");
+                return;
+            }
+
+            alert(
+                `Quinzena importada para o balance:\n\n` +
+                `Subtotal: $${data.subtotal.toFixed(2)}\n` +
+                `-7% Operational Cost: $${data.operationalCost.toFixed(2)}\n` +
+                `Total líquido: $${data.totalNet.toFixed(2)}`
+            );
+
+            // se quiser, você pode recarregar transactions globais em outro lugar
+        } catch (err: any) {
+            console.error(err);
+            alert(err.message || "Erro ao importar quinzena.");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // Helper para identificar se é rota ou extra
+    const isRoute = (job: Job) => {
+        // Pode ser pelo campo type (se a API retornar) ou inferido
+        // Aqui vamos inferir se o time for "ROUTE" ou delivery conter "ROUTE"
+        return job.time === "ROUTE" || job.delivery.includes("ROUTE");
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-background text-foreground">
+            {/* HEADER */}
+            <div className="p-6 pb-4 bg-card border-b border-border">
+                <h1 className="text-xl font-bold text-primary">My Jobs</h1>
+                <p className="text-sm text-muted-foreground">
+                    Gerencie suas rotas e trabalhos extras.
+                </p>
+            </div>
+
+            {/* CONTEÚDO */}
+            <div className="flex-1 p-4 md:p-6 overflow-y-auto pb-24 space-y-6">
+                {/* CONTROLES SUPERIORES (PERIOD START) */}
+                <section className="bg-card border border-border rounded-xl p-4 flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                        <label className="text-xs text-muted-foreground font-medium">
+                            DATA DE INÍCIO DA QUINZENA
+                        </label>
+                        <input
+                            type="date"
+                            className="bg-background border border-input rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary w-full"
+                            value={periodStart}
+                            onChange={(e) => {
+                                setPeriodStart(e.target.value);
+                                setNewJob((prev) => ({ ...prev, date: e.target.value }));
+                            }}
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                            Usada para gerar rotas e importar para o saldo.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <Button
+                            onClick={handleGenerateRoutes}
+                            variant="outline"
+                            className="flex-1 gap-2 text-xs h-10"
+                            disabled={loading}
+                        >
+                            <Map className="h-4 w-4" />
+                            Gerar Rotas (15 dias)
+                        </Button>
+                        <Button
+                            onClick={handleImportPeriod}
+                            className="flex-1 gap-2 text-xs h-10 bg-primary text-primary-foreground hover:bg-primary/90"
+                            disabled={loading}
+                        >
+                            <Briefcase className="h-4 w-4" />
+                            Importar p/ Saldo
+                        </Button>
+                    </div>
+                </section>
+
+                {/* FORM DE EXTRA JOB */}
+                <section className="bg-card border border-border rounded-xl p-4 space-y-4">
+                    <h2 className="font-semibold text-sm flex items-center gap-2">
+                        <Plus className="h-4 w-4 text-primary" />
+                        Adicionar Extra Job
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs text-muted-foreground">Date</label>
+                            <input
+                                type="date"
+                                value={newJob.date}
+                                onChange={(e) =>
+                                    setNewJob((prev) => ({ ...prev, date: e.target.value }))
+                                }
+                                className="bg-background border border-input rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs text-muted-foreground">Price</label>
+                            <input
+                                type="number"
+                                placeholder="Ex: 150"
+                                value={newJob.price}
+                                onChange={(e) =>
+                                    setNewJob((prev) => ({ ...prev, price: e.target.value }))
+                                }
+                                className="bg-background border border-input rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs text-muted-foreground">Pickup</label>
+                            <input
+                                type="text"
+                                placeholder="Ex: Mountain View"
+                                value={newJob.pickup}
+                                onChange={(e) =>
+                                    setNewJob((prev) => ({ ...prev, pickup: e.target.value }))
+                                }
+                                className="bg-background border border-input rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs text-muted-foreground">Delivery</label>
+                            <input
+                                type="text"
+                                placeholder="Ex: Ogden Regional"
+                                value={newJob.delivery}
+                                onChange={(e) =>
+                                    setNewJob((prev) => ({ ...prev, delivery: e.target.value }))
+                                }
+                                className="bg-background border border-input rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1 md:col-span-2">
+                            <label className="text-xs text-muted-foreground">Time / Obs</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Ex: EXTRA / AFTER"
+                                    value={newJob.time}
+                                    onChange={(e) =>
+                                        setNewJob((prev) => ({ ...prev, time: e.target.value }))
+                                    }
+                                    className="flex-1 bg-background border border-input rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary"
+                                />
+                                <Button
+                                    onClick={handleAddExtraJob}
+                                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                                    disabled={loading}
+                                >
+                                    Adicionar
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* LISTA DE TODOS OS JOBS */}
+                <section className="bg-card border border-border rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="font-semibold text-sm">Todos os jobs</h2>
+                        <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full">
+                            {jobs.length} itens
+                        </span>
+                    </div>
+
+                    {loading && (
+                        <p className="text-sm text-muted-foreground text-center py-4">Carregando jobs…</p>
+                    )}
+
+                    {error && !loading && (
+                        <p className="text-sm text-red-400 text-center py-4">{error}</p>
+                    )}
+
+                    {!loading && !error && jobs.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-8">Nenhum job registrado.</p>
+                    )}
+
+                    {!loading && !error && jobs.length > 0 && (
+                        <div className="space-y-3">
+                            {jobs.map((job) => {
+                                const routeJob = isRoute(job);
+                                return (
+                                    <div
+                                        key={job.id}
+                                        className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-background/50"
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded">
+                                                    {new Date(job.date).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', weekday: 'short' })}
+                                                </span>
+                                                {routeJob ? (
+                                                    <span className="text-[10px] font-bold text-blue-400 border border-blue-400/30 px-1.5 py-0.5 rounded">
+                                                        ROUTE
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] font-bold text-yellow-400 border border-yellow-400/30 px-1.5 py-0.5 rounded">
+                                                        EXTRA
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-sm text-foreground">
+                                                    ${job.price.toFixed(2)}
+                                                </span>
+                                                <details className="relative">
+                                                    <summary className="list-none flex items-center justify-center h-6 w-6 hover:bg-secondary rounded cursor-pointer">
+                                                        <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                                                    </summary>
+                                                    <div className="absolute right-0 mt-1 w-32 bg-popover border border-border rounded-md shadow-lg text-xs z-10 py-1">
+                                                        <button
+                                                            className="block w-full text-left px-3 py-2 hover:bg-secondary text-red-400"
+                                                            onClick={() => handleDeleteJob(job.id)}
+                                                        >
+                                                            Apagar
+                                                        </button>
+                                                    </div>
+                                                </details>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-1 text-xs">
+                                            <div className="text-muted-foreground">
+                                                <span className="block text-[10px] uppercase opacity-70">Pickup</span>
+                                                <span className="text-foreground">{job.pickup}</span>
+                                            </div>
+                                            <div className="text-muted-foreground text-right">
+                                                <span className="block text-[10px] uppercase opacity-70">Delivery</span>
+                                                <span className="text-foreground">{job.delivery}</span>
+                                            </div>
+                                        </div>
+                                        {job.time && (
+                                            <div className="text-[10px] text-muted-foreground border-t border-border/50 pt-1 mt-1">
+                                                Obs: {job.time}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+
+                            {/* SUBTOTAL / OP COST / TOTAL */}
+                            <div className="mt-6 pt-4 border-t border-border space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Subtotal</span>
+                                    <span className="font-medium">${subtotal.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">- 7% Operational Cost</span>
+                                    <span className="font-medium text-red-400">-${operationalCost.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-base font-bold pt-2 border-t border-border">
+                                    <span className="text-foreground">Total Líquido</span>
+                                    <span className="text-green-400">${finalTotal.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </section>
+            </div>
+        </div>
+    );
+}

@@ -6,9 +6,10 @@ import HomeView from "./HomeView";
 import HistoryView from "./HistoryView";
 import SavingsView from "./SavingsView";
 import SettingsView from "./SettingsView";
+import MyJobsView from "./MyJobsView";
 
 export default function Dashboard() {
-    const [activeTab, setActiveTab] = useState<"home" | "history" | "savings" | "settings">("home");
+    const [activeTab, setActiveTab] = useState<"home" | "history" | "savings" | "settings" | "my-jobs">("home");
 
     useEffect(() => {
         // Trigger auto-generation of fixed expenses
@@ -21,6 +22,7 @@ export default function Dashboard() {
             <main className="max-w-md mx-auto min-h-screen bg-background relative shadow-2xl overflow-hidden border-x border-border">
                 {activeTab === "home" && <HomeView />}
                 {activeTab === "history" && <HistoryView />}
+                {activeTab === "my-jobs" && <MyJobsView />}
                 {activeTab === "savings" && <SavingsView />}
                 {activeTab === "settings" && <SettingsView />}
 
