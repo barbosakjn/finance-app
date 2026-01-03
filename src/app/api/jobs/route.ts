@@ -63,18 +63,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // 2) cria também uma Transaction de INCOME pra entrar no saldo
-    await prisma.transaction.create({
-      data: {
-        type: 'INCOME',
-        amount: numericPrice,
-        description: `${pickup} → ${delivery}${time ? ` (${time})` : ''}`,
-        date: parsedDate,
-        category: 'Job',
-        imageUrl: null,
-        status: 'PAID',
-      },
-    });
 
     return NextResponse.json(job, { status: 201 });
   } catch (error) {
