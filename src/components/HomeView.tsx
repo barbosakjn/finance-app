@@ -37,7 +37,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
     }, []);
 
     const fetchTransactions = () => {
-        fetch('/api/transactions')
+        fetch('/api/transactions', { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 setTransactions(data); // Store all data to properly filter upcoming bills
