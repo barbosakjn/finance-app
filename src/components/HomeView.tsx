@@ -145,7 +145,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                                 <div className="flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-full flex items-center justify-center bg-red-900/20 text-red-500">
                                         <span className="text-xs font-bold">
-                                            {new Date(t.dueDate || t.date).getDate()}
+                                            📅
                                         </span>
                                     </div>
                                     <div>

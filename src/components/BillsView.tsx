@@ -91,7 +91,7 @@ function SortableBillItem({ bill, toggleStatus, onEdit, onDelete }: { bill: Bill
                         {bill.description}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        Due: {new Date(bill.dueDate || bill.date).getDate()}th
+                        Due: {new Date(bill.dueDate || bill.date).toLocaleDateString()}
                     </p>
                 </div>
             </div>
