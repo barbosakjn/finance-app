@@ -146,7 +146,25 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                     {transactions
                         // @ts-ignore
                         .filter(t => t.type === 'EXPENSE' && t.status === 'PENDING' && t.isBill)
-                        .sort((a, b) => new Date(a.dueDate || a.date).getTime() - new Date(b.dueDate || b.date).getTime())
+                        .sort((a, b) => {
+                            const savedOrder = localStorage.getItem('bills-order');
+                            if (savedOrder) {
+                                const orderIds = JSON.parse(savedOrder);
+                                const indexA = orderIds.indexOf(a.id);
+                                const indexB = orderIds.indexOf(b.id);
+
+                                // Priority:
+                                // 1. Both in custom order -> Sort by custom order
+                                // 2. One in custom order -> Custom one comes first
+                                // 3. Neither in custom order -> Sort by Date
+
+                                if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                                if (indexA !== -1) return -1;
+                                if (indexB !== -1) return 1;
+                            }
+                            // Default Date Sort
+                            return new Date(a.dueDate || a.date).getTime() - new Date(b.dueDate || b.date).getTime();
+                        })
                         .slice(0, 3)
                         .map((t) => (
                             <div key={t.id} className="flex items-center justify-between bg-card p-3 rounded-xl shadow-sm border border-border">
