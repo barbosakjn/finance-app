@@ -40,9 +40,17 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
         fetch('/api/transactions')
             .then(res => res.json())
             .then(data => {
-                setTransactions(data.slice(0, 5)); // Only show recent 5
-                const income = data.filter((t: any) => t.type === 'INCOME').reduce((acc: number, t: any) => acc + t.amount, 0);
-                const expense = data.filter((t: any) => t.type === 'EXPENSE').reduce((acc: number, t: any) => acc + t.amount, 0);
+                setTransactions(data); // Store all data to properly filter upcoming bills
+
+                // Calculate Balance: Only count PAID transactions
+                const income = data
+                    .filter((t: any) => t.type === 'INCOME') // Assuming all income is valid/paid for now, or check status if needed
+                    .reduce((acc: number, t: any) => acc + t.amount, 0);
+
+                const expense = data
+                    .filter((t: any) => t.type === 'EXPENSE' && t.status === 'PAID') // Only subtract PAID expenses
+                    .reduce((acc: number, t: any) => acc + t.amount, 0);
+
                 setBalance(income - expense);
             });
     };
