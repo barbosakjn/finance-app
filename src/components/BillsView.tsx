@@ -70,9 +70,10 @@ export default function BillsView() {
             const res = await fetch('/api/transactions');
             const data = await res.json();
 
-            // Filter: Expense only, within this month (based on Date or DueDate)
+            // Filter: Expense only, within this month (based on Date or DueDate) AND isBill=true
             const currentMonthBills = data.filter((t: Bill) => {
-                if (t.type !== 'EXPENSE') return false;
+                // @ts-ignore
+                if (t.type !== 'EXPENSE' || !t.isBill) return false;
 
                 const targetDate = new Date(t.dueDate || t.date);
                 return targetDate.getMonth() === currentDate.getMonth() &&
@@ -114,6 +115,7 @@ export default function BillsView() {
             type: "EXPENSE",
             date: editingBill.date || new Date().toISOString(),
             status: editingBill.status || "PENDING",
+            isBill: true, // Always true for items created effectively in BillsView
         };
 
         const method = editingBill.id ? 'PUT' : 'POST';

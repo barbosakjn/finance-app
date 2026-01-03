@@ -136,7 +136,8 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
 
                 <div className="space-y-4">
                     {transactions
-                        .filter(t => t.type === 'EXPENSE' && t.status === 'PENDING')
+                        // @ts-ignore
+                        .filter(t => t.type === 'EXPENSE' && t.status === 'PENDING' && t.isBill)
                         .sort((a, b) => new Date(a.dueDate || a.date).getTime() - new Date(b.dueDate || b.date).getTime())
                         .slice(0, 3)
                         .map((t) => (
@@ -177,7 +178,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                                 </div>
                             </div>
                         ))}
-                    {transactions.filter(t => t.type === 'EXPENSE' && t.status === 'PENDING').length === 0 && (
+                    {transactions.filter(t => t.type === 'EXPENSE' && t.status === 'PENDING' && (t as any).isBill).length === 0 && (
                         <p className="text-center text-muted-foreground text-sm py-4">No upcoming bills.</p>
                     )}
                 </div>

@@ -32,7 +32,7 @@ type SortBy = "NEWEST" | "OLDEST" | "HIGHEST" | "LOWEST";
 
 export default function HistoryView() {
     const [transactions, setTransactions] = useState<any[]>([]);
-    const [filter, setFilter] = useState<"EXPENSE" | "INCOME">("EXPENSE");
+    const [filter, setFilter] = useState<"EXPENSE" | "INCOME" | "CATEGORIES">("EXPENSE");
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<any>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -145,6 +145,23 @@ export default function HistoryView() {
         0
     );
 
+    const categoryData = useMemo(() => {
+        if (filter !== "CATEGORIES") return [];
+
+        const expenses = transactions.filter(t => t.type === 'EXPENSE');
+        const grouped = expenses.reduce((acc: any, t) => {
+            const cat = t.category || 'Uncategorized';
+            if (!acc[cat]) {
+                acc[cat] = { name: cat, total: 0, count: 0 };
+            }
+            acc[cat].total += t.amount;
+            acc[cat].count += 1;
+            return acc;
+        }, {});
+
+        return Object.values(grouped).sort((a: any, b: any) => b.total - a.total);
+    }, [transactions, filter]);
+
     const sortLabel = useMemo(() => {
         switch (sortBy) {
             case "NEWEST":
@@ -184,7 +201,7 @@ export default function HistoryView() {
             <div className="flex-1 bg-background p-6 overflow-y-auto pb-24">
                 {/* Tabs */}
                 <div className="flex items-center justify-between mb-6">
-                    <div className="flex gap-6">
+                    <div className="flex gap-4">
                         <button
                             onClick={() => setFilter("EXPENSE")}
                             className={`pb-2 font-medium transition-colors ${filter === "EXPENSE" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
@@ -197,87 +214,123 @@ export default function HistoryView() {
                         >
                             Earnings
                         </button>
+                        <button
+                            onClick={() => setFilter("CATEGORIES")}
+                            className={`pb-2 font-medium transition-colors ${filter === "CATEGORIES" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+                        >
+                            Categories
+                        </button>
                     </div>
 
                     {/* Sort by dropdown */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button className="flex items-center gap-1 text-xs text-muted-foreground">
-                                Sort by: <span className="font-semibold">{sortLabel}</span>
-                                <Filter className="h-3 w-3" />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => setSortBy("NEWEST")}>
-                                Newest
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSortBy("OLDEST")}>
-                                Oldest
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSortBy("HIGHEST")}>
-                                Highest amount
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSortBy("LOWEST")}>
-                                Lowest amount
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {filter !== "CATEGORIES" && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    Sort by: <span className="font-semibold">{sortLabel}</span>
+                                    <Filter className="h-3 w-3" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => setSortBy("NEWEST")}>
+                                    Newest
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSortBy("OLDEST")}>
+                                    Oldest
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSortBy("HIGHEST")}>
+                                    Highest amount
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSortBy("LOWEST")}>
+                                    Lowest amount
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </div>
 
                 {/* List */}
                 <div className="space-y-4">
-                    {sortedTransactions.map((t) => (
-                        <div
-                            key={t.id}
-                            className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-border"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 bg-secondary rounded-lg flex items-center justify-center text-xl">
-                                    🧾
+                    {filter === "CATEGORIES" ? (
+                        // Categories View
+                        <>
+                            {categoryData.map((cat: any) => (
+                                <div key={cat.name} className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-border">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-10 w-10 bg-secondary rounded-lg flex items-center justify-center text-xl font-bold text-primary">
+                                            {cat.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm text-foreground">{cat.name}</p>
+                                            <p className="text-xs text-muted-foreground">{cat.count} transactions</p>
+                                        </div>
+                                    </div>
+                                    <div className="font-bold text-red-500">
+                                        -${cat.total.toFixed(2)}
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-bold text-sm text-foreground">{t.description}</p>
-                                    <p className="text-xs text-muted-foreground">{t.category}</p>
+                            ))}
+                            {categoryData.length === 0 && (
+                                <p className="text-center text-muted-foreground py-8">No expenses found.</p>
+                            )}
+                        </>
+                    ) : (
+                        // Standard List
+                        <>
+                            {sortedTransactions.map((t) => (
+                                <div
+                                    key={t.id}
+                                    className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-border"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-10 w-10 bg-secondary rounded-lg flex items-center justify-center text-xl">
+                                            🧾
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm text-foreground">{t.description}</p>
+                                            <p className="text-xs text-muted-foreground">{t.category}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-right">
+                                            <p className={`font-bold ${t.type === 'INCOME' ? 'text-green-500' : 'text-red-500'}`}>
+                                                {t.type === 'INCOME' ? '+' : '-'}${t.amount.toFixed(2)}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {new Date(t.date).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground">
+                                                    <span className="sr-only">Open menu</span>
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={() => handleEditClick(t)}>
+                                                    <Edit className="mr-2 h-4 w-4" /> Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDelete(t.id)}
+                                                    className="text-destructive"
+                                                >
+                                                    <Trash className="mr-2 h-4 w-4" /> Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="text-right">
-                                    <p className={`font-bold ${t.type === 'INCOME' ? 'text-green-500' : 'text-red-500'}`}>
-                                        {t.type === 'INCOME' ? '+' : '-'}${t.amount.toFixed(2)}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {new Date(t.date).toLocaleDateString()}
-                                    </p>
-                                </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground">
-                                            <span className="sr-only">Open menu</span>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                        <DropdownMenuItem onClick={() => handleEditClick(t)}>
-                                            <Edit className="mr-2 h-4 w-4" /> Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            onClick={() => handleDelete(t.id)}
-                                            className="text-destructive"
-                                        >
-                                            <Trash className="mr-2 h-4 w-4" /> Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        </div>
-                    ))}
-                    {sortedTransactions.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">
-                            No {filter.toLowerCase()} found.
-                        </p>
+                            ))}
+                            {sortedTransactions.length === 0 && (
+                                <p className="text-center text-muted-foreground py-8">
+                                    No {filter.toLowerCase()} found.
+                                </p>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

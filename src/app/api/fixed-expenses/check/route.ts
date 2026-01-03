@@ -48,6 +48,7 @@ export async function POST() {
                         status: 'PENDING',
                         dueDate: safeDueDate,
                         fixedExpenseId: expense.id,
+                        isBill: true,
                     },
                 });
                 generatedTransactions.push(newTransaction);

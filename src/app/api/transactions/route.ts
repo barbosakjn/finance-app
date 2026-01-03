@@ -14,16 +14,24 @@ export async function GET() {
 
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
+        const { description, amount, category, type, date, status, dueDate, fixedExpenseId, isBill } = await req.json();
+
+        // Basic validation
+        if (!amount || !description || !type || !date) {
+            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
         const transaction = await prisma.transaction.create({
             data: {
-                amount: parseFloat(body.amount),
-                description: body.description,
-                date: new Date(body.date),
-                category: body.category,
-                type: body.type,
-                status: body.status || 'PAID',
-                dueDate: body.dueDate ? new Date(body.dueDate) : null,
+                description,
+                amount: parseFloat(amount),
+                category: category || 'Uncategorized',
+                type,
+                date: new Date(date),
+                status: status || 'PAID', // Default to PAID if not specified
+                dueDate: dueDate ? new Date(dueDate) : null,
+                fixedExpenseId: fixedExpenseId || null,
+                isBill: isBill || false,
             },
         });
         return NextResponse.json(transaction);

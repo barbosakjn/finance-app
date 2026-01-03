@@ -19,6 +19,7 @@ model Transaction {
   status         String   @default("PAID") // "PAID" or "PENDING"
   dueDate        DateTime?
   fixedExpenseId String?  // Link to FixedExpense for automation tracking
+  isBill         Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
