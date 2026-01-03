@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import BottomNav from "./BottomNav";
 import HomeView from "./HomeView";
 import HistoryView from "./HistoryView";
-import SavingsView from "./SavingsView";
+
 import SettingsView from "./SettingsView";
 import MyJobsView from "./MyJobsView";
+import BillsView from "./BillsView";
 
 export default function Dashboard() {
-    const [activeTab, setActiveTab] = useState<"home" | "history" | "savings" | "settings" | "my-jobs">("home");
+    const [activeTab, setActiveTab] = useState<"home" | "history" | "bills" | "settings" | "my-jobs">("home");
 
     useEffect(() => {
         // Trigger auto-generation of fixed expenses
@@ -23,7 +24,7 @@ export default function Dashboard() {
                 {activeTab === "home" && <HomeView onNavigate={setActiveTab} />}
                 {activeTab === "history" && <HistoryView />}
                 {activeTab === "my-jobs" && <MyJobsView />}
-                {activeTab === "savings" && <SavingsView />}
+                {activeTab === "bills" && <BillsView />}
                 {activeTab === "settings" && <SettingsView />}
 
                 <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
