@@ -1,14 +1,10 @@
-"use client";
-
 import { useEffect, useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Plus, CheckCircle, Circle, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, CheckCircle, Circle, MoreHorizontal, Edit, Trash2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -21,6 +17,26 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
+// DnD Imports
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+
 type Bill = {
     id: string;
     description: string;
@@ -31,6 +47,80 @@ type Bill = {
     status: "PAID" | "PENDING";
     category?: string;
 };
+
+// Sortable Item Component
+function SortableBillItem({ bill, toggleStatus, onEdit, onDelete }: { bill: Bill, toggleStatus: (b: Bill) => void, onEdit: (b: Bill) => void, onDelete: (id: string) => void }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: bill.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 10 : 1,
+        opacity: isDragging ? 0.8 : 1,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`flex items-center justify-between bg-card p-3 rounded-xl border border-border shadow-sm ${isDragging ? "ring-2 ring-primary" : ""}`}
+        >
+            {/* Drag Handle */}
+            <div {...attributes} {...listeners} className="mr-3 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground">
+                <GripVertical className="h-5 w-5" />
+            </div>
+
+            {/* Status Toggle */}
+            <div className="flex items-center gap-3 flex-1">
+                <button
+                    onClick={() => toggleStatus(bill)}
+                    className={`transition-colors ${bill.status === 'PAID' ? 'text-green-500' : 'text-muted-foreground hover:text-yellow-500'}`}
+                >
+                    {bill.status === 'PAID' ? <CheckCircle className="h-6 w-6" /> : <Circle className="h-6 w-6" />}
+                </button>
+
+                <div>
+                    <p className={`font-medium text-sm ${bill.status === 'PAID' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                        {bill.description}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        Due: {new Date(bill.dueDate || bill.date).getDate()}th
+                    </p>
+                </div>
+            </div>
+
+            {/* Amount & Actions */}
+            <div className="flex items-center gap-3">
+                <span className="font-bold text-sm">
+                    ${bill.amount.toFixed(2)}
+                </span>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit(bill)}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDelete(bill.id)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        </div>
+    );
+}
 
 export default function BillsView() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -46,6 +136,18 @@ export default function BillsView() {
         fetchBills();
     }, [currentDate]);
 
+    // DnD Sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Require 8px movement to start drag (prevents accidental drags on touch)
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     // Format Month
     const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
@@ -57,16 +159,6 @@ export default function BillsView() {
     const fetchBills = async () => {
         setLoading(true);
         try {
-            // Calculate start/end of month
-            const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString();
-            const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString();
-
-            // We need a way to filter by date range on the API. 
-            // For now, let's fetch all and filter client side or assume API returns relevant recent ones.
-            // Ideally, update API to accept start/end query params.
-            // Assuming the current API returns recent transactions, we might need a dedicated endpoint or filter.
-            // Let's use the existing one and filter for now as MVP.
-
             const res = await fetch('/api/transactions');
             const data = await res.json();
 
@@ -80,11 +172,49 @@ export default function BillsView() {
                     targetDate.getFullYear() === currentDate.getFullYear();
             });
 
+            // Apply Sort Order from LocalStorage
+            const savedOrder = localStorage.getItem('bills-order');
+            if (savedOrder) {
+                const orderIds = JSON.parse(savedOrder);
+                currentMonthBills.sort((a: Bill, b: Bill) => {
+                    const indexA = orderIds.indexOf(a.id);
+                    const indexB = orderIds.indexOf(b.id);
+                    // Items not in the saved list go to the end
+                    if (indexA === -1 && indexB === -1) return 0;
+                    if (indexA === -1) return 1;
+                    if (indexB === -1) return -1;
+                    return indexA - indexB;
+                });
+            } else {
+                // Default Sort by Date if no custom order
+                currentMonthBills.sort((a: Bill, b: Bill) => new Date(a.dueDate || a.date).getTime() - new Date(b.dueDate || b.date).getTime());
+            }
+
             setBills(currentMonthBills);
         } catch (error) {
             console.error("Error fetching bills:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Handle Drag End
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            setBills((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over.id);
+
+                const newItems = arrayMove(items, oldIndex, newIndex);
+
+                // Save Order to Local Storage
+                const itemIds = newItems.map(item => item.id);
+                localStorage.setItem('bills-order', JSON.stringify(itemIds));
+
+                return newItems;
+            });
         }
     };
 
@@ -180,61 +310,37 @@ export default function BillsView() {
             </div>
 
             {/* List */}
-            <div className="p-4 space-y-3 flex-1 overflow-y-auto">
-                {bills.sort((a, b) => new Date(a.dueDate || a.date).getTime() - new Date(b.dueDate || b.date).getTime()).map(bill => (
-                    <div key={bill.id} className="flex items-center justify-between bg-card p-3 rounded-xl border border-border shadow-sm">
-
-                        {/* Status Toggle */}
-                        <div className="flex items-center gap-3 flex-1">
-                            <button
-                                onClick={() => toggleStatus(bill)}
-                                className={`transition-colors ${bill.status === 'PAID' ? 'text-green-500' : 'text-muted-foreground hover:text-yellow-500'}`}
-                            >
-                                {bill.status === 'PAID' ? <CheckCircle className="h-6 w-6" /> : <Circle className="h-6 w-6" />}
-                            </button>
-
-                            <div>
-                                <p className={`font-medium text-sm ${bill.status === 'PAID' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                                    {bill.description}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    Due: {new Date(bill.dueDate || bill.date).getDate()}th
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Amount & Actions */}
-                        <div className="flex items-center gap-3">
-                            <span className="font-bold text-sm">
-                                ${bill.amount.toFixed(2)}
-                            </span>
-
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => {
+            <div className="p-4 flex-1 overflow-y-auto">
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                    modifiers={[restrictToVerticalAxis]}
+                >
+                    <SortableContext
+                        items={bills.map(b => b.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <div className="space-y-3">
+                            {bills.map(bill => (
+                                <SortableBillItem
+                                    key={bill.id}
+                                    bill={bill}
+                                    toggleStatus={toggleStatus}
+                                    onEdit={(b) => {
                                         setEditingBill({
-                                            ...bill,
-                                            // Ensure formatted dates for inputs
-                                            date: new Date(bill.date).toISOString().split('T')[0],
-                                            dueDate: bill.dueDate ? new Date(bill.dueDate).toISOString().split('T')[0] : ''
+                                            ...b,
+                                            date: new Date(b.date).toISOString().split('T')[0],
+                                            dueDate: b.dueDate ? new Date(b.dueDate).toISOString().split('T')[0] : ''
                                         });
                                         setIsDialogOpen(true);
-                                    }}>
-                                        <Edit className="mr-2 h-4 w-4" /> Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleDelete(bill.id)} className="text-destructive">
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                                    }}
+                                    onDelete={handleDelete}
+                                />
+                            ))}
                         </div>
-                    </div>
-                ))}
+                    </SortableContext>
+                </DndContext>
             </div>
 
             {/* FAB */}
@@ -248,7 +354,7 @@ export default function BillsView() {
                     });
                     setIsDialogOpen(true);
                 }}
-                className="fixed bottom-20 right-6 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center"
+                className="fixed bottom-20 right-6 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center z-50"
             >
                 <Plus className="h-6 w-6" />
             </Button>
