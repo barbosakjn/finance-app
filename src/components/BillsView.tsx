@@ -133,6 +133,13 @@ export default function BillsView() {
 
     // Initial Load
     useEffect(() => {
+        // Trigger check for recurring bills for the current month
+        fetch('/api/fixed-expenses/check', { method: 'POST' })
+            .then(() => fetchBills()) // Fetch after checking
+            .catch(console.error);
+    }, []);
+
+    useEffect(() => {
         fetchBills();
     }, [currentDate]);
 
