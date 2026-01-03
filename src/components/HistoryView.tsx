@@ -256,17 +256,17 @@ export default function HistoryView() {
                         // Categories View
                         <>
                             {categoryData.map((cat: any) => (
-                                <div key={cat.name} className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-border">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 bg-secondary rounded-lg flex items-center justify-center text-xl font-bold text-primary">
+                                <div key={cat.name} className="flex items-center justify-between bg-card p-3 rounded-lg shadow-sm border border-border">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 bg-secondary rounded-md flex items-center justify-center text-sm font-bold text-primary">
                                             {cat.name.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-sm text-foreground">{cat.name}</p>
-                                            <p className="text-xs text-muted-foreground">{cat.count} transactions</p>
+                                            <p className="font-bold text-xs text-foreground">{cat.name}</p>
+                                            <p className="text-[10px] text-muted-foreground">{cat.count} transactions</p>
                                         </div>
                                     </div>
-                                    <div className="font-bold text-red-500">
+                                    <div className="font-bold text-sm text-red-500">
                                         -${cat.total.toFixed(2)}
                                     </div>
                                 </div>
