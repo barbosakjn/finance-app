@@ -83,7 +83,7 @@ export default function MyJobsView() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    date: new Date(newJob.date),
+                    date: newJob.date,
                     pickup: newJob.pickup || "—",
                     delivery: newJob.delivery || "—",
                     time: newJob.time || "EXTRA",
