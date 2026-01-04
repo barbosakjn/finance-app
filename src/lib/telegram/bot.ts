@@ -142,7 +142,7 @@ bot.on('photo', async (ctx) => {
             await prisma.transaction.create({
                 data: {
                     description: data.description,
-                    amount: data.amount,
+                    amount: Math.abs(data.amount), // Force positive amount for correct expense calculation
                     type: 'EXPENSE',
                     status: 'PAID',
                     date: new Date(data.date || new Date()),
@@ -150,7 +150,7 @@ bot.on('photo', async (ctx) => {
                     isBill: false
                 }
             });
-            await ctx.reply(`✅ Recibo salvo!\n📝 ${data.description}\n💰 $${data.amount}`);
+            await ctx.reply(`✅ Recibo salvo!\n📝 ${data.description}\n💰 $${Math.abs(data.amount)}`);
         } else {
             await ctx.reply("❌ Não consegui ler o valor ou descrição.");
         }
