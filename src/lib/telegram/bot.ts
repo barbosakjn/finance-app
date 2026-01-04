@@ -2,7 +2,8 @@ import { Telegraf, Context } from 'telegraf';
 import { prisma } from '@/lib/prisma';
 
 // Initialize Bot
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || '');
+const token = process.env.TELEGRAM_BOT_TOKEN || '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11'; // Fallback for build
+const bot = new Telegraf(token);
 
 // Helper: Fuzzy Match
 function findBestMatch(text: string, bills: any[]) {
