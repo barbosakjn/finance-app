@@ -309,6 +309,30 @@ export default function SettingsView() {
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </div>
 
+                    <div onClick={async () => {
+                        if (confirm("This will update all old categories to the new standard ones. Continue?")) {
+                            try {
+                                const res = await fetch('/api/migrate-categories', { method: 'POST' });
+                                const data = await res.json();
+                                alert(`Migration complete! Updated ${data.updated} transactions.`);
+                                window.location.reload();
+                            } catch (e) {
+                                alert("Migration failed.");
+                            }
+                        }
+                    }} className="flex items-center justify-between p-4 bg-card rounded-xl border border-border cursor-pointer hover:bg-accent/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500">
+                                <Smartphone className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="font-medium">Fix Categories</p>
+                                <p className="text-xs text-muted-foreground">Update old categories</p>
+                            </div>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </div>
+
                     <Dialog>
                         <DialogTrigger asChild>
                             <div className="flex items-center justify-between p-4 bg-card rounded-xl border border-border cursor-pointer hover:bg-accent/50 transition-colors">
