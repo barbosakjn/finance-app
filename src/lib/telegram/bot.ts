@@ -97,6 +97,70 @@ bot.action(/^pay_(.+)$/, async (ctx) => {
     await ctx.answerCbQuery();
 });
 
+// OpenAI Setup
+import OpenAI from 'openai';
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// 3. Photo Handler (Receipt Logic)
+bot.on('photo', async (ctx) => {
+    const userId = ctx.from.id.toString();
+    const allowedUser = process.env.TELEGRAM_USER_ID;
+    if (allowedUser && userId !== allowedUser) {
+        return ctx.reply("⛔ Unauthorized.");
+    }
+
+    try {
+        await ctx.reply("📸 Analisando recibo...");
+
+        // Get File Link
+        const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+        const fileLink = await ctx.telegram.getFileLink(fileId);
+
+        // Analyze with OpenAI Vision
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: "Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }." },
+                        { type: "image_url", image_url: { url: fileLink.href } }
+                    ]
+                }
+            ],
+            max_tokens: 300
+        });
+
+        const content = response.choices[0].message.content;
+        const cleanJson = content?.replace(/```json|```/g, '').trim();
+
+        if (!cleanJson) throw new Error("No JSON found");
+
+        const data = JSON.parse(cleanJson);
+
+        if (data.amount && data.description) {
+            await prisma.transaction.create({
+                data: {
+                    description: data.description,
+                    amount: data.amount,
+                    type: 'EXPENSE',
+                    status: 'PAID',
+                    date: new Date(data.date || new Date()),
+                    category: 'Receipt Scan',
+                    isBill: false
+                }
+            });
+            await ctx.reply(`✅ Recibo salvo!\n📝 ${data.description}\n💰 $${data.amount}`);
+        } else {
+            await ctx.reply("❌ Não consegui ler o valor ou descrição.");
+        }
+
+    } catch (e) {
+        console.error("Receipt Error:", e);
+        await ctx.reply("Erra ao processar a imagem.");
+    }
+});
+
 bot.action("cancel", async (ctx) => {
     await ctx.reply("Operação cancelada.");
     // @ts-ignore
