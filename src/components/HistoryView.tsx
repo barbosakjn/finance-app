@@ -30,6 +30,19 @@ import {
 
 type SortBy = "NEWEST" | "OLDEST" | "HIGHEST" | "LOWEST";
 
+const CATEGORY_ICONS: Record<string, string> = {
+    "Housing": "/categories/housing.png",
+    "Transportation": "/categories/transportation.png",
+    "Food": "/categories/food.png",
+    "Health": "/categories/health.png",
+    "Shopping": "/categories/shopping.png",
+    "Entertainment": "/categories/entertainment.png",
+    "Financial": "/categories/financial.png",
+    "Education": "/categories/education.png",
+    "Other": "/categories/other.png",
+    "IA STUFF": "/categories/ia_stuff.png"
+};
+
 export default function HistoryView() {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [filter, setFilter] = useState<"EXPENSE" | "INCOME" | "CATEGORIES">("EXPENSE");
@@ -39,7 +52,7 @@ export default function HistoryView() {
     const [newTransaction, setNewTransaction] = useState({
         description: '',
         amount: '',
-        category: '',
+        category: 'Housing',
         type: 'EXPENSE',
         date: new Date().toISOString().split('T')[0]
     });
@@ -73,7 +86,7 @@ export default function HistoryView() {
         setNewTransaction({
             description: '',
             amount: '',
-            category: '',
+            category: 'Housing',
             type: 'EXPENSE',
             date: new Date().toISOString().split('T')[0]
         });
@@ -258,8 +271,12 @@ export default function HistoryView() {
                             {categoryData.map((cat: any) => (
                                 <div key={cat.name} className="flex items-center justify-between bg-card p-3 rounded-lg shadow-sm border border-border">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 bg-secondary rounded-md flex items-center justify-center text-sm font-bold text-primary">
-                                            {cat.name.charAt(0).toUpperCase()}
+                                        <div className="h-8 w-8 bg-secondary rounded-full flex items-center justify-center overflow-hidden border border-border">
+                                            {CATEGORY_ICONS[cat.name] ? (
+                                                <img src={CATEGORY_ICONS[cat.name]} alt={cat.name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <span className="text-xs font-bold text-primary">{cat.name.charAt(0).toUpperCase()}</span>
+                                            )}
                                         </div>
                                         <div>
                                             <p className="font-bold text-xs text-foreground">{cat.name}</p>
@@ -284,8 +301,12 @@ export default function HistoryView() {
                                     className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-border"
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 bg-secondary rounded-lg flex items-center justify-center text-xl">
-                                            🧾
+                                        <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center overflow-hidden border border-border">
+                                            {CATEGORY_ICONS[t.category] ? (
+                                                <img src={CATEGORY_ICONS[t.category]} alt={t.category} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <div className="text-xl">🧾</div>
+                                            )}
                                         </div>
                                         <div>
                                             <p className="font-bold text-sm text-foreground">{t.description}</p>
@@ -400,14 +421,18 @@ export default function HistoryView() {
                             <Label htmlFor="cat" className="text-right">
                                 Category
                             </Label>
-                            <Input
+                            <select
                                 id="cat"
+                                className="col-span-3 flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 value={newTransaction.category}
                                 onChange={e =>
                                     setNewTransaction({ ...newTransaction, category: e.target.value })
                                 }
-                                className="col-span-3"
-                            />
+                            >
+                                {Object.keys(CATEGORY_ICONS).map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="date" className="text-right">
@@ -474,8 +499,9 @@ export default function HistoryView() {
                             <Label htmlFor="edit-category" className="text-right">
                                 Category
                             </Label>
-                            <Input
+                            <select
                                 id="edit-category"
+                                className="col-span-3 flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 value={editingTransaction?.category || ''}
                                 onChange={(e) =>
                                     setEditingTransaction({
@@ -483,8 +509,11 @@ export default function HistoryView() {
                                         category: e.target.value,
                                     })
                                 }
-                                className="col-span-3"
-                            />
+                            >
+                                {Object.keys(CATEGORY_ICONS).map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-date" className="text-right">

@@ -26,6 +26,19 @@ interface HomeViewProps {
     onNavigate?: (tab: "home" | "history" | "bills" | "settings" | "my-jobs") => void;
 }
 
+const CATEGORY_ICONS: Record<string, string> = {
+    "Housing": "/categories/housing.png",
+    "Transportation": "/categories/transportation.png",
+    "Food": "/categories/food.png",
+    "Health": "/categories/health.png",
+    "Shopping": "/categories/shopping.png",
+    "Entertainment": "/categories/entertainment.png",
+    "Financial": "/categories/financial.png",
+    "Education": "/categories/education.png",
+    "Other": "/categories/other.png",
+    "IA STUFF": "/categories/ia_stuff.png"
+};
+
 export default function HomeView({ onNavigate }: HomeViewProps) {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [upcomingBills, setUpcomingBills] = useState<any[]>([]);
@@ -196,8 +209,14 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                     {transactions.map((t) => (
                         <div key={t.id} className="flex items-center justify-between bg-card p-3 rounded-xl shadow-sm border border-border">
                             <div className="flex items-center gap-3">
-                                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${t.type === 'INCOME' ? 'bg-green-900/20 text-green-500' : 'bg-red-900/20 text-red-500'}`}>
-                                    {t.type === 'INCOME' ? '+' : '-'}
+                                <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden border border-border">
+                                    {CATEGORY_ICONS[t.category] ? (
+                                        <img src={CATEGORY_ICONS[t.category]} alt={t.category} className="h-full w-full object-cover" />
+                                    ) : (
+                                        <div className={`h-full w-full flex items-center justify-center ${t.type === 'INCOME' ? 'text-green-500' : 'text-red-500'}`}>
+                                            {t.type === 'INCOME' ? '+' : '-'}
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm text-foreground">{t.description}</p>
@@ -260,12 +279,16 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="category" className="text-right">Category</Label>
-                            <Input
+                            <select
                                 id="category"
+                                className="col-span-3 flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 value={editingTransaction?.category || ''}
-                                onChange={(e) => setEditingTransaction({ ...editingTransaction, category: e.target.value })}
-                                className="col-span-3"
-                            />
+                                onChange={e => setEditingTransaction({ ...editingTransaction, category: e.target.value })}
+                            >
+                                {Object.keys(CATEGORY_ICONS).map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="date" className="text-right">Date</Label>

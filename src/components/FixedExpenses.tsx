@@ -31,9 +31,22 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
+const CATEGORY_ICONS: Record<string, string> = {
+    "Housing": "/categories/housing.png",
+    "Transportation": "/categories/transportation.png",
+    "Food": "/categories/food.png",
+    "Health": "/categories/health.png",
+    "Shopping": "/categories/shopping.png",
+    "Entertainment": "/categories/entertainment.png",
+    "Financial": "/categories/financial.png",
+    "Education": "/categories/education.png",
+    "Other": "/categories/other.png",
+    "IA STUFF": "/categories/ia_stuff.png"
+};
+
 export default function FixedExpenses() {
     const [expenses, setExpenses] = useState<any[]>([]);
-    const [newExpense, setNewExpense] = useState({ name: '', amount: '', dueDay: '', category: '' });
+    const [newExpense, setNewExpense] = useState({ name: '', amount: '', dueDay: '', category: 'Housing' });
     const [editingExpense, setEditingExpense] = useState<any>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
@@ -71,7 +84,7 @@ export default function FixedExpenses() {
             return;
         }
         setExpenses([...expenses, data]);
-        setNewExpense({ name: '', amount: '', dueDay: '', category: '' });
+        setNewExpense({ name: '', amount: '', dueDay: '', category: 'Housing' });
     };
 
     const handleDelete = async (id: string) => {
@@ -134,12 +147,15 @@ export default function FixedExpenses() {
                         onChange={e => setNewExpense({ ...newExpense, name: e.target.value })}
                         className="bg-background border-input"
                     />
-                    <Input
-                        placeholder="Category"
+                    <select
+                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         value={newExpense.category}
                         onChange={e => setNewExpense({ ...newExpense, category: e.target.value })}
-                        className="bg-background border-input"
-                    />
+                    >
+                        {Object.keys(CATEGORY_ICONS).map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </select>
                     <Input
                         placeholder="Amount ($)"
                         type="number"
@@ -163,9 +179,18 @@ export default function FixedExpenses() {
             <div className="space-y-3">
                 {expenses.map((exp) => (
                     <div key={exp.id} className="flex items-center justify-between bg-card p-4 rounded-xl border border-border shadow-sm">
-                        <div>
-                            <p className="font-bold text-foreground">{exp.name}</p>
-                            <p className="text-xs text-muted-foreground">{exp.category} • Day {exp.dueDay}</p>
+                        <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center overflow-hidden border border-border">
+                                {CATEGORY_ICONS[exp.category] ? (
+                                    <img src={CATEGORY_ICONS[exp.category]} alt={exp.category} className="h-full w-full object-cover" />
+                                ) : (
+                                    <span className="text-xs font-bold">{exp.category?.[0]}</span>
+                                )}
+                            </div>
+                            <div>
+                                <p className="font-bold text-foreground">{exp.name}</p>
+                                <p className="text-xs text-muted-foreground">{exp.category} • Day {exp.dueDay}</p>
+                            </div>
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="font-bold text-red-500">-${exp.amount.toFixed(2)}</span>
@@ -210,7 +235,16 @@ export default function FixedExpenses() {
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="category">Category</Label>
-                            <Input id="category" value={editingExpense?.category || ''} onChange={e => setEditingExpense({ ...editingExpense, category: e.target.value })} />
+                            <select
+                                id="category"
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={editingExpense?.category || ''}
+                                onChange={e => setEditingExpense({ ...editingExpense, category: e.target.value })}
+                            >
+                                {Object.keys(CATEGORY_ICONS).map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="amount">Amount</Label>
