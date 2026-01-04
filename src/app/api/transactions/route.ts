@@ -1,8 +1,25 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
+        const { searchParams } = new URL(req.url);
+        const upcoming = searchParams.get('upcoming');
+
+        if (upcoming === 'true') {
+            const transactions = await prisma.transaction.findMany({
+                where: {
+                    type: 'EXPENSE',
+                    status: 'PENDING',
+                },
+                orderBy: {
+                    dueDate: 'asc',
+                },
+                take: 5,
+            });
+            return NextResponse.json(transactions);
+        }
+
         const transactions = await prisma.transaction.findMany({
             orderBy: { date: 'desc' },
         });

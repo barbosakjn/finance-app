@@ -28,6 +28,7 @@ interface HomeViewProps {
 
 export default function HomeView({ onNavigate }: HomeViewProps) {
     const [transactions, setTransactions] = useState<any[]>([]);
+    const [upcomingBills, setUpcomingBills] = useState<any[]>([]);
     const [balance, setBalance] = useState(0);
     const [editingTransaction, setEditingTransaction] = useState<any>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -37,6 +38,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
     }, []);
 
     const fetchTransactions = () => {
+        // Fetch recent transactions and balance
         fetch('/api/transactions')
             .then(res => res.json())
             .then(data => {
@@ -45,12 +47,30 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                 const expense = data.filter((t: any) => t.type === 'EXPENSE').reduce((acc: number, t: any) => acc + t.amount, 0);
                 setBalance(income - expense);
             });
+
+        // Fetch upcoming bills
+        fetch('/api/transactions?upcoming=true')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setUpcomingBills(data);
+                }
+            });
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this transaction?")) return;
         await fetch(`/api/transactions?id=${id}`, { method: 'DELETE' });
         fetchTransactions();
+    };
+
+    const handlePay = async (id: string) => {
+        await fetch('/api/transactions', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, status: 'PAID' }),
+        });
+        fetchTransactions(); // Refresh both lists
     };
 
     const handleEditClick = (transaction: any) => {
@@ -149,6 +169,36 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Upcoming Bills Section */}
+            {upcomingBills.length > 0 && (
+                <div className="px-6 mb-6">
+                    <h3 className="font-bold text-lg text-foreground mb-4">Upcoming Bills</h3>
+                    <div className="space-y-3">
+                        {upcomingBills.map((bill) => (
+                            <div key={bill.id} className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-l-4 border-l-red-500 border-y-border border-r-border">
+                                <div>
+                                    <p className="font-bold text-sm text-foreground">{bill.description}</p>
+                                    <p className="text-xs text-red-500 font-medium">
+                                        Due: {bill.dueDate ? new Date(bill.dueDate).toLocaleDateString() : 'No date'}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="font-bold text-red-500">-${bill.amount.toFixed(2)}</span>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                        onClick={() => handlePay(bill.id)}
+                                    >
+                                        Pay
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Recent Transactions */}
             <div className="px-6 flex-1">
