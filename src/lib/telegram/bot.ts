@@ -101,6 +101,12 @@ bot.action(/^pay_(.+)$/, async (ctx) => {
 import OpenAI from 'openai';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Categories
+const CATEGORIES = [
+    "Housing", "Transportation", "Food", "Health", "Shopping",
+    "Entertainment", "Financial", "Education", "Other", "IA STUFF"
+];
+
 // 3. Photo Handler (Receipt Logic)
 bot.on('photo', async (ctx) => {
     const userId = ctx.from.id.toString();
@@ -139,25 +145,72 @@ bot.on('photo', async (ctx) => {
         const data = JSON.parse(cleanJson);
 
         if (data.amount && data.description) {
-            await prisma.transaction.create({
+            const transaction = await prisma.transaction.create({
                 data: {
                     description: data.description,
                     amount: Math.abs(data.amount), // Force positive amount for correct expense calculation
                     type: 'EXPENSE',
                     status: 'PAID',
                     date: new Date(data.date || new Date()),
-                    category: 'Receipt Scan',
+                    category: 'Uncategorized', // Temporary
                     isBill: false
                 }
             });
-            await ctx.reply(`✅ Recibo salvo!\n📝 ${data.description}\n💰 $${Math.abs(data.amount)}`);
+
+            // Generate Category Buttons (2 columns)
+            const buttons = [];
+            for (let i = 0; i < CATEGORIES.length; i += 2) {
+                const row = [];
+                row.push({ text: CATEGORIES[i], callback_data: `set_cat_${transaction.id}_${i}` });
+                if (i + 1 < CATEGORIES.length) {
+                    row.push({ text: CATEGORIES[i + 1], callback_data: `set_cat_${transaction.id}_${i + 1}` });
+                }
+                buttons.push(row);
+            }
+
+            await ctx.reply(
+                `✅ Recibo salvo!\n📝 ${data.description}\n💰 $${Math.abs(data.amount)}\n\n📂 Selecione a categoria:`,
+                {
+                    reply_markup: {
+                        inline_keyboard: buttons
+                    }
+                }
+            );
         } else {
             await ctx.reply("❌ Não consegui ler o valor ou descrição.");
         }
 
     } catch (e) {
         console.error("Receipt Error:", e);
-        await ctx.reply("Erra ao processar a imagem.");
+        await ctx.reply("Erro ao processar a imagem.");
+    }
+});
+
+// 4. Category Selection Handler
+bot.action(/^set_cat_(.+)_(.+)$/, async (ctx) => {
+    const transactionId = ctx.match[1];
+    const categoryIndex = parseInt(ctx.match[2]);
+    const category = CATEGORIES[categoryIndex];
+
+    if (!category) {
+        return ctx.reply("❌ Categoria inválida.");
+    }
+
+    try {
+        await prisma.transaction.update({
+            where: { id: transactionId },
+            data: { category: category }
+        });
+
+        await ctx.editMessageText(
+            `${(ctx.callbackQuery.message as any)?.text?.split('\n\n')[0]}\n\n✅ Categoria definida: ${category}`,
+            { parse_mode: 'Markdown' } // Optional: Keep formatting if needed
+        );
+        // @ts-ignore
+        await ctx.answerCbQuery(`Categoria salva: ${category}`);
+    } catch (e) {
+        console.error("Category Update Error:", e);
+        await ctx.reply("Erro ao atualizar categoria.");
     }
 });
 
