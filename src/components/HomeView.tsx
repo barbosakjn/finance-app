@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
 interface HomeViewProps {
-    onNavigate?: (tab: "home" | "history" | "savings" | "settings" | "my-jobs") => void;
+    onNavigate?: (tab: "home" | "history" | "bills" | "settings" | "my-jobs") => void;
 }
 
 export default function HomeView({ onNavigate }: HomeViewProps) {
@@ -44,7 +44,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
             .then(data => {
                 setTransactions(data.slice(0, 5)); // Only show recent 5
                 const income = data.filter((t: any) => t.type === 'INCOME').reduce((acc: number, t: any) => acc + t.amount, 0);
-                const expense = data.filter((t: any) => t.type === 'EXPENSE').reduce((acc: number, t: any) => acc + t.amount, 0);
+                const expense = data.filter((t: any) => t.type === 'EXPENSE' && t.status === 'PAID').reduce((acc: number, t: any) => acc + t.amount, 0);
                 setBalance(income - expense);
             });
 
@@ -117,53 +117,25 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                 </div>
             </div>
 
-            {/* Balance Carousel */}
-            <div className="px-6 mb-6 overflow-x-auto flex gap-4 pb-4 snap-x mt-4">
-                {/* Card 1: Personal */}
-                <div className="min-w-[300px] snap-center">
-                    <div className="bg-gradient-to-br from-yellow-600 to-yellow-800 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden border border-yellow-500/20">
-                        <div className="absolute top-0 right-0 p-4 opacity-20">
-                            <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="50" cy="50" r="50" fill="white" />
-                            </svg>
-                        </div>
-                        <div className="relative z-10">
-                            <p className="text-sm opacity-80 mb-1">Total Balance</p>
-                            <h2 className="text-3xl font-bold mb-8 text-white">${balance.toFixed(2)}</h2>
-                            <div className="flex justify-between items-end">
-                                <div>
-                                    <p className="text-xs opacity-60">Account Holder</p>
-                                    <p className="font-medium">Caio Barbosa</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs opacity-60">Bank</p>
-                                    <p className="font-bold italic">Personal</p>
-                                </div>
-                            </div>
-                        </div>
+            {/* Balance Card */}
+            <div className="px-6 mb-6 mt-4">
+                <div className="bg-gradient-to-br from-yellow-600 to-yellow-800 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden border border-yellow-500/20">
+                    <div className="absolute top-0 right-0 p-4 opacity-20">
+                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="50" cy="50" r="50" fill="white" />
+                        </svg>
                     </div>
-                </div>
-
-                {/* Card 2: Business */}
-                <div className="min-w-[300px] snap-center">
-                    <div className="bg-zinc-900 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden border border-zinc-800">
-                        <div className="absolute bottom-0 left-0 p-4 opacity-20">
-                            <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect width="100" height="100" rx="20" fill="white" />
-                            </svg>
-                        </div>
-                        <div className="relative z-10">
-                            <p className="text-sm opacity-80 mb-1">Business Balance</p>
-                            <h2 className="text-3xl font-bold mb-8">$12,450.00</h2>
-                            <div className="flex justify-between items-end">
-                                <div>
-                                    <p className="text-xs opacity-60">Account Holder</p>
-                                    <p className="font-medium">Caio Barbosa</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs opacity-60">Bank</p>
-                                    <p className="font-bold italic">Business</p>
-                                </div>
+                    <div className="relative z-10">
+                        <p className="text-sm opacity-80 mb-1">Total Balance</p>
+                        <h2 className="text-3xl font-bold mb-8 text-white">${balance.toFixed(2)}</h2>
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <p className="text-xs opacity-60">Account Holder</p>
+                                <p className="font-medium">Caio Barbosa</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs opacity-60">Bank</p>
+                                <p className="font-bold italic">Personal</p>
                             </div>
                         </div>
                     </div>
@@ -173,7 +145,15 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
             {/* Upcoming Bills Section */}
             {upcomingBills.length > 0 && (
                 <div className="px-6 mb-6">
-                    <h3 className="font-bold text-lg text-foreground mb-4">Upcoming Bills</h3>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-lg text-foreground">Upcoming Bills</h3>
+                        <button
+                            onClick={() => onNavigate?.("bills")}
+                            className="text-sm text-primary font-medium hover:underline"
+                        >
+                            See all
+                        </button>
+                    </div>
                     <div className="space-y-3">
                         {upcomingBills.map((bill) => (
                             <div key={bill.id} className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-l-4 border-l-red-500 border-y-border border-r-border">

@@ -29,18 +29,37 @@ export async function GET(req: Request) {
     }
 }
 
+// Helper to parse date safely (prevents timezone shifts for YYYY-MM-DD)
+const parseDateSafe = (dateString: string | Date | undefined): Date | undefined => {
+    if (!dateString) return undefined;
+    if (dateString instanceof Date) return dateString;
+    // If string matches YYYY-MM-DD exactly, set time to noon to avoid timezone issues
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return new Date(`${dateString}T12:00:00`);
+    }
+    return new Date(dateString);
+};
+
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
+        const { description, amount, category, type, date, status, dueDate, fixedExpenseId, isBill } = await req.json();
+
+        // Basic validation
+        if (!amount || !description || !type || !date) {
+            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
         const transaction = await prisma.transaction.create({
             data: {
-                amount: parseFloat(body.amount),
-                description: body.description,
-                date: new Date(body.date),
-                category: body.category,
-                type: body.type,
-                status: body.status || 'PAID',
-                dueDate: body.dueDate ? new Date(body.dueDate) : null,
+                description,
+                amount: parseFloat(amount),
+                category: category || 'Uncategorized',
+                type,
+                date: parseDateSafe(date) as Date,
+                status: status || 'PAID',
+                dueDate: dueDate ? parseDateSafe(dueDate) : null,
+                fixedExpenseId: fixedExpenseId || null,
+                isBill: isBill || false,
             },
         });
         return NextResponse.json(transaction);
@@ -57,10 +76,10 @@ export async function PUT(req: Request) {
             data: {
                 amount: body.amount ? parseFloat(body.amount) : undefined,
                 description: body.description,
-                date: body.date ? new Date(body.date) : undefined,
+                date: body.date ? parseDateSafe(body.date) : undefined,
                 category: body.category,
                 status: body.status,
-                dueDate: body.dueDate ? new Date(body.dueDate) : null,
+                dueDate: body.dueDate ? parseDateSafe(body.dueDate) : null,
             },
         });
         return NextResponse.json(transaction);

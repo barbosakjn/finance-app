@@ -1,9 +1,9 @@
 "use client";
 
-import { Home, PieChart, PiggyBank, Settings, Briefcase } from "lucide-react";
+import { Home, PieChart, FileText, Settings, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Tab = "home" | "history" | "savings" | "settings" | "my-jobs";
+type Tab = "home" | "history" | "bills" | "settings" | "my-jobs";
 
 interface BottomNavProps {
     activeTab: Tab;
@@ -47,14 +47,14 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             </button>
 
             <button
-                onClick={() => onTabChange("savings")}
+                onClick={() => onTabChange("bills")}
                 className={cn(
                     "flex flex-col items-center justify-center gap-1 transition-colors",
-                    activeTab === "savings" ? "text-primary" : "text-muted-foreground hover:text-primary/70"
+                    activeTab === "bills" ? "text-primary" : "text-muted-foreground hover:text-primary/70"
                 )}
             >
-                <PiggyBank className="h-6 w-6" />
-                <span className="text-[10px] font-medium">Savings</span>
+                <FileText className="h-6 w-6" />
+                <span className="text-[10px] font-medium">Bills</span>
             </button>
 
             <button
