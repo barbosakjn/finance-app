@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Settings, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Smartphone, Newspaper, Calendar } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { Settings, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Smartphone, Newspaper, Calendar, Download, PieChart as PieChartIcon } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -45,8 +46,17 @@ export default function SettingsView() {
     const [profile, setProfile] = useState({ name: "Caio Barbosa", email: "caio@example.com" });
     const [notifications, setNotifications] = useState({ push: true, email: true, bills: true });
     const [preferences, setPreferences] = useState({ currency: "USD ($)", theme: "Dark" });
+    const [transactions, setTransactions] = useState<any[]>([]);
+
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#a4de6c'];
 
     useEffect(() => {
+        // Fetch Transactions for Analytics & Export
+        fetch('/api/transactions')
+            .then(res => res.json())
+            .then(data => setTransactions(data))
+            .catch(err => console.error("Failed to fetch transactions:", err));
+
         // Load News
         fetch('/api/news')
             .then(res => res.json())
@@ -67,6 +77,47 @@ export default function SettingsView() {
         const savedPreferences = localStorage.getItem('user_preferences');
         if (savedPreferences) setPreferences(JSON.parse(savedPreferences));
     }, []);
+
+    const handleExport = () => {
+        const headers = ["Date", "Description", "Category", "Type", "Amount", "Status"];
+        const csvContent = [
+            headers.join(","),
+            ...transactions.map(t => [
+                new Date(t.date).toLocaleDateString(),
+                `"${t.description}"`,
+                t.category,
+                t.type,
+                t.amount,
+                t.status
+            ].join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "transactions_export.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
+
+    // Prepare Chart Data
+    const categoryData = transactions
+        .filter(t => t.type === 'EXPENSE')
+        .reduce((acc: any[], t) => {
+            const existing = acc.find(i => i.name === t.category);
+            if (existing) {
+                existing.value += t.amount;
+            } else {
+                acc.push({ name: t.category || 'Other', value: t.amount });
+            }
+            return acc;
+        }, [])
+        .sort((a, b) => b.value - a.value);
 
     const handleSaveProfile = () => {
         localStorage.setItem('user_profile', JSON.stringify(profile));
@@ -242,6 +293,73 @@ export default function SettingsView() {
                                 <DialogTitle>Recurring Expenses</DialogTitle>
                             </DialogHeader>
                             <FixedExpenses />
+                        </DialogContent>
+                    </Dialog>
+
+                    <div onClick={handleExport} className="flex items-center justify-between p-4 bg-card rounded-xl border border-border cursor-pointer hover:bg-accent/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
+                                <Download className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="font-medium">Export Data</p>
+                                <p className="text-xs text-muted-foreground">Download CSV report</p>
+                            </div>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </div>
+
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <div className="flex items-center justify-between p-4 bg-card rounded-xl border border-border cursor-pointer hover:bg-accent/50 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500">
+                                        <PieChartIcon className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">Analytics</p>
+                                        <p className="text-xs text-muted-foreground">Spending breakdown</p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                        </DialogTrigger>
+                        <DialogContent className="max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>Spending Analytics</DialogTitle>
+                            </DialogHeader>
+                            <div className="h-[300px] w-full mt-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={categoryData}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            outerRadius={80}
+                                            fill="#8884d8"
+                                            dataKey="value"
+                                        >
+                                            {categoryData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <RechartsTooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="space-y-2 mt-4">
+                                {categoryData.map((cat, index) => (
+                                    <div key={index} className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                                            <span>{cat.name}</span>
+                                        </div>
+                                        <span className="font-medium">${cat.value.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </DialogContent>
                     </Dialog>
                 </div>

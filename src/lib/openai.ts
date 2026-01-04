@@ -24,7 +24,7 @@ export async function parseReceipt(imageUrl: string): Promise<ParsedTransaction 
           - Total amount (number)
           - Date (ISO 8601 format YYYY-MM-DD, use today's date ${new Date().toISOString().split('T')[0]} if not found or if incomplete)
           - Description (short summary)
-          - Category (e.g., Food, Transport, Utilities, Salary, Investment, etc.)
+          - Category (STRICTLY one of: "Housing", "Transportation", "Food", "Health", "Shopping", "Entertainment", "Financial", "Education", "Other")
           - Type (INCOME or EXPENSE)
           
           Return ONLY a valid JSON object with keys: amount, date, description, category, type.
