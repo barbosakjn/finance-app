@@ -119,7 +119,7 @@ export default function FixedExpenses() {
 
     const handleGenerateBill = async (expense: any) => {
         const today = new Date();
-        const dueDate = new Date(today.getFullYear(), today.getMonth(), expense.dueDay);
+        const dueDate = new Date(today.getFullYear(), today.getMonth(), expense.dueDay, 12, 0, 0);
 
         await fetch('/api/transactions', {
             method: 'POST',

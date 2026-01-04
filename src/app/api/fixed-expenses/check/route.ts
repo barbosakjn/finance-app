@@ -36,7 +36,7 @@ export async function POST() {
                 // Let's clamp to last day of month if needed.
                 const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
                 const safeDay = Math.min(expense.dueDay, lastDayOfMonth);
-                const safeDueDate = new Date(currentYear, currentMonth, safeDay);
+                const safeDueDate = new Date(currentYear, currentMonth, safeDay, 12, 0, 0);
 
                 const newTransaction = await prisma.transaction.create({
                     data: {
