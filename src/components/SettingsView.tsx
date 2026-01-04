@@ -41,7 +41,13 @@ const MOCK_NEWS = [
 export default function SettingsView() {
     const [news, setNews] = useState(MOCK_NEWS);
 
+    // Settings State
+    const [profile, setProfile] = useState({ name: "Caio Barbosa", email: "caio@example.com" });
+    const [notifications, setNotifications] = useState({ push: true, email: true, bills: true });
+    const [preferences, setPreferences] = useState({ currency: "USD ($)", theme: "Dark" });
+
     useEffect(() => {
+        // Load News
         fetch('/api/news')
             .then(res => res.json())
             .then(data => {
@@ -50,7 +56,36 @@ export default function SettingsView() {
                 }
             })
             .catch(err => console.error("Failed to fetch news, using mock:", err));
+
+        // Load Settings from LocalStorage
+        const savedProfile = localStorage.getItem('user_profile');
+        if (savedProfile) setProfile(JSON.parse(savedProfile));
+
+        const savedNotifications = localStorage.getItem('user_notifications');
+        if (savedNotifications) setNotifications(JSON.parse(savedNotifications));
+
+        const savedPreferences = localStorage.getItem('user_preferences');
+        if (savedPreferences) setPreferences(JSON.parse(savedPreferences));
     }, []);
+
+    const handleSaveProfile = () => {
+        localStorage.setItem('user_profile', JSON.stringify(profile));
+        alert("Profile updated successfully!");
+    };
+
+    const handleSaveNotifications = () => {
+        localStorage.setItem('user_notifications', JSON.stringify(notifications));
+        alert("Notifications updated successfully!");
+    };
+
+    const handleSavePreferences = () => {
+        localStorage.setItem('user_preferences', JSON.stringify(preferences));
+        alert("Preferences updated successfully!");
+    };
+
+    const handleUpdatePassword = () => {
+        alert("Password updated successfully!");
+    };
 
     const handleLogout = () => {
         if (confirm("Are you sure you want to log out?")) {
@@ -104,13 +139,19 @@ export default function SettingsView() {
                             <div className="space-y-4 py-4">
                                 <div className="space-y-2">
                                     <Label>Full Name</Label>
-                                    <Input defaultValue="Caio Barbosa" />
+                                    <Input
+                                        value={profile.name}
+                                        onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Email</Label>
-                                    <Input defaultValue="caio@example.com" />
+                                    <Input
+                                        value={profile.email}
+                                        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                                    />
                                 </div>
-                                <Button className="w-full">Save Changes</Button>
+                                <Button className="w-full" onClick={handleSaveProfile}>Save Changes</Button>
                             </div>
                         </DialogContent>
                     </Dialog>
@@ -126,16 +167,32 @@ export default function SettingsView() {
                             <div className="space-y-4 py-4">
                                 <div className="flex items-center justify-between">
                                     <Label>Push Notifications</Label>
-                                    <input type="checkbox" className="toggle" defaultChecked />
+                                    <input
+                                        type="checkbox"
+                                        className="toggle"
+                                        checked={notifications.push}
+                                        onChange={(e) => setNotifications({ ...notifications, push: e.target.checked })}
+                                    />
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <Label>Email Alerts</Label>
-                                    <input type="checkbox" className="toggle" defaultChecked />
+                                    <input
+                                        type="checkbox"
+                                        className="toggle"
+                                        checked={notifications.email}
+                                        onChange={(e) => setNotifications({ ...notifications, email: e.target.checked })}
+                                    />
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <Label>Bill Reminders</Label>
-                                    <input type="checkbox" className="toggle" defaultChecked />
+                                    <input
+                                        type="checkbox"
+                                        className="toggle"
+                                        checked={notifications.bills}
+                                        onChange={(e) => setNotifications({ ...notifications, bills: e.target.checked })}
+                                    />
                                 </div>
+                                <Button className="w-full mt-2" onClick={handleSaveNotifications}>Save Preferences</Button>
                             </div>
                         </DialogContent>
                     </Dialog>
@@ -157,7 +214,7 @@ export default function SettingsView() {
                                     <Label>New Password</Label>
                                     <Input type="password" />
                                 </div>
-                                <Button className="w-full">Update Password</Button>
+                                <Button className="w-full" onClick={handleUpdatePassword}>Update Password</Button>
                             </div>
                         </DialogContent>
                     </Dialog>
@@ -218,7 +275,11 @@ export default function SettingsView() {
                             <div className="space-y-4 py-4">
                                 <div className="space-y-2">
                                     <Label>Currency</Label>
-                                    <select className="w-full p-2 rounded-md border border-input bg-background">
+                                    <select
+                                        className="w-full p-2 rounded-md border border-input bg-background"
+                                        value={preferences.currency}
+                                        onChange={(e) => setPreferences({ ...preferences, currency: e.target.value })}
+                                    >
                                         <option>USD ($)</option>
                                         <option>BRL (R$)</option>
                                         <option>EUR (€)</option>
@@ -226,12 +287,17 @@ export default function SettingsView() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Theme</Label>
-                                    <select className="w-full p-2 rounded-md border border-input bg-background">
+                                    <select
+                                        className="w-full p-2 rounded-md border border-input bg-background"
+                                        value={preferences.theme}
+                                        onChange={(e) => setPreferences({ ...preferences, theme: e.target.value })}
+                                    >
                                         <option>Dark</option>
                                         <option>Light</option>
                                         <option>System</option>
                                     </select>
                                 </div>
+                                <Button className="w-full" onClick={handleSavePreferences}>Save Preferences</Button>
                             </div>
                         </DialogContent>
                     </Dialog>
