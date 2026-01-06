@@ -63,6 +63,30 @@ export default function HistoryView() {
         fetchTransactions();
     }, []);
 
+    const [recoveredReceipts, setRecoveredReceipts] = useState<any[]>([]);
+
+    useEffect(() => {
+        // Check for lost receipts
+        fetch('/api/recovery')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data) && data.length > 0) {
+                    setRecoveredReceipts(data);
+                }
+            });
+    }, []);
+
+    const handleRecover = async () => {
+        const ids = recoveredReceipts.map(r => r.id);
+        await fetch('/api/recovery', {
+            method: 'POST',
+            body: JSON.stringify({ ids })
+        });
+        setRecoveredReceipts([]);
+        fetchTransactions(); // Refresh list
+        alert("Receipts moved to top of list!");
+    };
+
     const fetchTransactions = () => {
         // Add timestamp to prevent browser caching
         fetch(`/api/transactions?t=${Date.now()}`, { cache: 'no-store' })
@@ -210,6 +234,25 @@ export default function HistoryView() {
                     <span>↑ Up by 4% from last month</span>
                 </div>
             </div>
+
+            {/* Recovery Banner */}
+            {
+                recoveredReceipts.length > 0 && (
+                    <div className="mx-6 mb-4 bg-yellow-500/10 border border-yellow-500/50 p-4 rounded-xl flex items-center justify-between">
+                        <div>
+                            <p className="font-bold text-yellow-600 text-sm">Found {recoveredReceipts.length} Uncategorized Receipts</p>
+                            <p className="text-xs text-yellow-600/80">They might be hidden in previous dates.</p>
+                        </div>
+                        <Button
+                            size="sm"
+                            className="bg-yellow-600 text-white hover:bg-yellow-700"
+                            onClick={handleRecover}
+                        >
+                            Move to Today
+                        </Button>
+                    </div>
+                )
+            }
 
             {/* Content Area */}
             <div className="flex-1 bg-background p-6 overflow-y-auto pb-24">
@@ -539,6 +582,6 @@ export default function HistoryView() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }
