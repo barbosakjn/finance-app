@@ -64,7 +64,8 @@ export default function HistoryView() {
     }, []);
 
     const fetchTransactions = () => {
-        fetch('/api/transactions', { cache: 'no-store' })
+        // Add timestamp to prevent browser caching
+        fetch(`/api/transactions?t=${Date.now()}`, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => setTransactions(data));
     };
