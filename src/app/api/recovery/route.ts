@@ -21,10 +21,7 @@ export async function GET() {
                     {
                         category: 'Receipt Scan',
                         date: { gte: threeDaysAgo }
-                    },
-                    // Case 2: Specific "Ghost" amounts (Broad search, any status/date)
-                    { amount: { gte: 4.80, lte: 4.90 } },
-                    { amount: { gte: 38.10, lte: 38.20 } }
+                    }
                 ]
             },
             orderBy: { date: 'desc' }
