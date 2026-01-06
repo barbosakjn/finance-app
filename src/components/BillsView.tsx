@@ -46,6 +46,7 @@ type Bill = {
     type: "EXPENSE";
     status: "PAID" | "PENDING";
     category?: string;
+    fixedExpenseId?: string | null;
 };
 
 // Sortable Item Component
@@ -172,7 +173,7 @@ export default function BillsView() {
             // Filter: Expense only, within this month (based on Date or DueDate) AND isBill=true
             const currentMonthBills = data.filter((t: Bill) => {
                 // @ts-ignore
-                if (t.type !== 'EXPENSE' || !t.isBill) return false;
+                if (t.type !== 'EXPENSE' || !t.isBill || t.status === 'CANCELLED') return false;
 
                 const targetDate = new Date(t.dueDate || t.date);
                 return targetDate.getMonth() === currentDate.getMonth() &&
@@ -285,8 +286,21 @@ export default function BillsView() {
     const handleDelete = async () => {
         if (!billToDelete) return;
 
+        // Find the bill object
+        const bill = bills.find(b => b.id === billToDelete);
+
         try {
-            await fetch(`/api/transactions?id=${billToDelete}`, { method: 'DELETE' });
+            if (bill?.fixedExpenseId) {
+                // Recurring Bill: Soft Delete (Mark as CANCELLED) to prevent auto-regeneration
+                await fetch('/api/transactions', {
+                    method: 'PUT',
+                    body: JSON.stringify({ ...bill, status: 'CANCELLED' }),
+                });
+            } else {
+                // Manual Bill: Hard Delete
+                await fetch(`/api/transactions?id=${billToDelete}`, { method: 'DELETE' });
+            }
+
             fetchBills();
             setIsDeleteDialogOpen(false);
             setBillToDelete(null);
