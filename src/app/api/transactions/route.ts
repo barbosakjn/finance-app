@@ -15,7 +15,7 @@ export async function GET(req: Request) {
                 orderBy: {
                     dueDate: 'asc',
                 },
-                take: 5,
+                // take: 5, // Removed to allow client-side DnD sorting
             });
             return NextResponse.json(transactions);
         }
