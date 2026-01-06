@@ -235,24 +235,31 @@ export default function HistoryView() {
                 </div>
             </div>
 
-            {/* Recovery Banner */}
-            {
-                recoveredReceipts.length > 0 && (
-                    <div className="mx-6 mb-4 bg-yellow-500/10 border border-yellow-500/50 p-4 rounded-xl flex items-center justify-between">
+            {/* Recovery & Debug Banner */}
+            {recoveredReceipts.length > 0 && (
+                <div className="mx-6 mb-4 bg-yellow-500/10 border border-yellow-500/50 p-4 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
                         <div>
-                            <p className="font-bold text-yellow-600 text-sm">Found {recoveredReceipts.length} Uncategorized Receipts</p>
-                            <p className="text-xs text-yellow-600/80">They might be hidden in previous dates.</p>
+                            <p className="font-bold text-yellow-600 text-sm">Diagnostic Tool found {recoveredReceipts.length} items</p>
+                            <p className="text-xs text-yellow-600/80">Check below why they might be hidden:</p>
                         </div>
                         <Button
                             size="sm"
                             className="bg-yellow-600 text-white hover:bg-yellow-700"
                             onClick={handleRecover}
                         >
-                            Move to Today
+                            Force Fix (Move to Today)
                         </Button>
                     </div>
-                )
-            }
+                    <div className="space-y-1">
+                        {recoveredReceipts.map(r => (
+                            <div key={r.id} className="text-[10px] bg-white/50 p-1 rounded border border-yellow-200 text-yellow-800 font-mono">
+                                💰 ${r.amount} | Date: {r.date?.split('T')[0]} | Status: {r.status} | Cat: {r.category}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Content Area */}
             <div className="flex-1 bg-background p-6 overflow-y-auto pb-24">
