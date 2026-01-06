@@ -125,7 +125,7 @@ export default function HistoryView() {
     };
 
     const filteredTransactions = useMemo(
-        () => transactions.filter(t => t.type === filter),
+        () => transactions.filter(t => t.type === filter && t.status === 'PAID'),
         [transactions, filter]
     );
 
