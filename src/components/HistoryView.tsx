@@ -64,7 +64,7 @@ export default function HistoryView() {
     }, []);
 
     const fetchTransactions = () => {
-        fetch('/api/transactions')
+        fetch('/api/transactions', { cache: 'no-store' })
             .then(res => res.json())
             .then(data => setTransactions(data));
     };
