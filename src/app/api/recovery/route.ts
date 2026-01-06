@@ -6,18 +6,25 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        // Look for Uncategorized Expenses in the last 3 days
+        // Look for Uncategorized Expenses OR specific "lost" amounts
         const threeDaysAgo = new Date();
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
         const lostReceipts = await prisma.transaction.findMany({
             where: {
-                type: 'EXPENSE',
-                status: 'PAID',
-                date: { gte: threeDaysAgo },
                 OR: [
-                    { category: 'Uncategorized' },
-                    { category: 'Receipt Scan' }
+                    // Case 1: Uncategorized (General recovery)
+                    {
+                        category: 'Uncategorized',
+                        date: { gte: threeDaysAgo }
+                    },
+                    {
+                        category: 'Receipt Scan',
+                        date: { gte: threeDaysAgo }
+                    },
+                    // Case 2: Specific "Ghost" amounts (Broad search, any status/date)
+                    { amount: { gte: 4.80, lte: 4.90 } },
+                    { amount: { gte: 38.10, lte: 38.20 } }
                 ]
             },
             orderBy: { date: 'desc' }
