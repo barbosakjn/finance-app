@@ -273,11 +273,23 @@ export default function BillsView() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Delete this bill?")) return;
+    // Delete Confirmation
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [billToDelete, setBillToDelete] = useState<string | null>(null);
+
+    const confirmDelete = (id: string) => {
+        setBillToDelete(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDelete = async () => {
+        if (!billToDelete) return;
+
         try {
-            await fetch(`/api/transactions?id=${id}`, { method: 'DELETE' });
+            await fetch(`/api/transactions?id=${billToDelete}`, { method: 'DELETE' });
             fetchBills();
+            setIsDeleteDialogOpen(false);
+            setBillToDelete(null);
         } catch (error) {
             console.error("Error deleting bill:", error);
         }
@@ -342,7 +354,7 @@ export default function BillsView() {
                                         });
                                         setIsDialogOpen(true);
                                     }}
-                                    onDelete={handleDelete}
+                                    onDelete={confirmDelete}
                                 />
                             ))}
                         </div>
@@ -402,6 +414,22 @@ export default function BillsView() {
                     </div>
                     <DialogFooter>
                         <Button onClick={handleSave}>Save</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Bill?</DialogTitle>
+                    </DialogHeader>
+                    <p className="py-4 text-muted-foreground">
+                        Are you sure you want to delete this bill? This action cannot be undone.
+                    </p>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleDelete}>Delete</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

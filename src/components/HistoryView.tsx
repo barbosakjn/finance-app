@@ -117,10 +117,21 @@ export default function HistoryView() {
         });
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this transaction?")) return;
-        await fetch(`/api/transactions?id=${id}`, { method: 'DELETE' });
+    // Delete Dialog State
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+
+    const confirmDelete = (id: string) => {
+        setTransactionToDelete(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDelete = async () => {
+        if (!transactionToDelete) return;
+        await fetch(`/api/transactions?id=${transactionToDelete}`, { method: 'DELETE' });
         fetchTransactions();
+        setIsDeleteDialogOpen(false);
+        setTransactionToDelete(null);
     };
 
     const handleEditClick = (transaction: any) => {
@@ -387,7 +398,7 @@ export default function HistoryView() {
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem
-                                                    onClick={() => handleDelete(t.id)}
+                                                    onClick={() => confirmDelete(t.id)}
                                                     className="text-destructive"
                                                 >
                                                     <Trash className="mr-2 h-4 w-4" /> Delete
