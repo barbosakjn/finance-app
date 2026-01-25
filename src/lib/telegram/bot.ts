@@ -104,8 +104,8 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Categories
 const CATEGORIES = [
-    "Housing", "Transportation", "Food", "Health", "Shopping",
-    "Entertainment", "Financial", "Education", "Other", "IA STUFF"
+    "Mercado", "Gas", "Restaurante", "Health", "Shopping",
+    "Entertaiment", "Extras", "Education", "Mensal", "IA Stuff"
 ];
 
 // 3. Photo Handler (Receipt Logic)

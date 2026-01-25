@@ -31,16 +31,16 @@ import {
 type SortBy = "NEWEST" | "OLDEST" | "HIGHEST" | "LOWEST";
 
 const CATEGORY_ICONS: Record<string, string> = {
-    "Housing": "/categories/housing.png",
-    "Transportation": "/categories/transportation.png",
-    "Food": "/categories/food.png",
-    "Health": "/categories/health.png",
+    "Mercado": "/categories/housing.png", // Reusing housing icon for Mercado as placeholder or requested? User didn't specify icon change, just name.
+    "Restaurante": "/categories/food.png",
     "Shopping": "/categories/shopping.png",
-    "Entertainment": "/categories/entertainment.png",
-    "Financial": "/categories/financial.png",
+    "Health": "/categories/health.png",
+    "Entertaiment": "/categories/entertainment.png",
+    "Extras": "/categories/financial.png",
     "Education": "/categories/education.png",
-    "Other": "/categories/other.png",
-    "IA STUFF": "/categories/ia_stuff.png"
+    "Mensal": "/categories/other.png",
+    "Gas": "/categories/transportation.png",
+    "IA Stuff": "/categories/ia_stuff.png"
 };
 
 export default function HistoryView() {
@@ -52,7 +52,7 @@ export default function HistoryView() {
     const [newTransaction, setNewTransaction] = useState({
         description: '',
         amount: '',
-        category: 'Housing',
+        category: 'Mercado',
         type: 'EXPENSE',
         date: new Date().toISOString().split('T')[0]
     });
@@ -112,7 +112,7 @@ export default function HistoryView() {
         setNewTransaction({
             description: '',
             amount: '',
-            category: 'Housing',
+            category: 'Mercado',
             type: 'EXPENSE',
             date: new Date().toISOString().split('T')[0]
         });
@@ -202,15 +202,44 @@ export default function HistoryView() {
         const grouped = expenses.reduce((acc: any, t) => {
             const cat = t.category || 'Uncategorized';
             if (!acc[cat]) {
-                acc[cat] = { name: cat, total: 0, count: 0 };
+                acc[cat] = { name: cat, total: 0, count: 0, items: [] };
             }
             acc[cat].total += t.amount;
             acc[cat].count += 1;
+            acc[cat].items.push(t);
             return acc;
         }, {});
 
-        return Object.values(grouped).sort((a: any, b: any) => b.total - a.total);
+        // Sort categories by total
+        const sortedCats = Object.values(grouped).sort((a: any, b: any) => b.total - a.total);
+
+        // Process monthly breakdown for each category
+        return sortedCats.map((cat: any) => {
+            const monthlyGroup = cat.items.reduce((mAcc: any, item: any) => {
+                const monthKey = new Date(item.date).toLocaleString('default', { month: 'long', year: 'numeric' });
+                if (!mAcc[monthKey]) mAcc[monthKey] = 0;
+                mAcc[monthKey] += item.amount;
+                return mAcc;
+            }, {});
+
+            return {
+                ...cat,
+                monthlyBreakdown: Object.entries(monthlyGroup).map(([month, total]) => ({ month, total }))
+            };
+        });
     }, [transactions, filter]);
+
+    // Simple Bar Chart Logic (Percentage)
+    const chartData = useMemo(() => {
+        if (filter !== "CATEGORIES" || categoryData.length === 0) return null;
+        const totalExp = categoryData.reduce((acc: number, c: any) => acc + c.total, 0);
+        return categoryData.map((c: any) => ({
+            name: c.name,
+            value: c.total,
+            percentage: ((c.total / totalExp) * 100).toFixed(1),
+            color: 'bg-primary' // simplified color logic
+        }));
+    }, [categoryData, filter]);
 
     const sortLabel = useMemo(() => {
         switch (sortBy) {
@@ -342,25 +371,63 @@ export default function HistoryView() {
                         // Categories View
                         <>
                             {categoryData.map((cat: any) => (
-                                <div key={cat.name} className="flex items-center justify-between bg-card p-3 rounded-lg shadow-sm border border-border">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 bg-secondary rounded-full flex items-center justify-center overflow-hidden border border-border">
-                                            {CATEGORY_ICONS[cat.name] ? (
-                                                <img src={CATEGORY_ICONS[cat.name]} alt={cat.name} className="h-full w-full object-cover" />
-                                            ) : (
-                                                <span className="text-xs font-bold text-primary">{cat.name.charAt(0).toUpperCase()}</span>
-                                            )}
+                                <details key={cat.name} className="group bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+                                    <summary className="flex items-center justify-between p-3 cursor-pointer list-none hover:bg-secondary/50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 bg-secondary rounded-full flex items-center justify-center overflow-hidden border border-border">
+                                                {CATEGORY_ICONS[cat.name] ? (
+                                                    <img src={CATEGORY_ICONS[cat.name]} alt={cat.name} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xs font-bold text-primary">{cat.name.charAt(0).toUpperCase()}</span>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-xs text-foreground">{cat.name}</p>
+                                                <p className="text-[10px] text-muted-foreground">{cat.count} transactions</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-xs text-foreground">{cat.name}</p>
-                                            <p className="text-[10px] text-muted-foreground">{cat.count} transactions</p>
+                                        <div className="flex items-center gap-2">
+                                            <div className="font-bold text-sm text-red-500">
+                                                -${cat.total.toFixed(2)}
+                                            </div>
+                                            <div className="transition-transform group-open:rotate-180">▼</div>
                                         </div>
+                                    </summary>
+
+                                    {/* Sub-items (Monthly Breakdown) */}
+                                    <div className="bg-secondary/20 p-3 space-y-2 border-t border-border/50 text-xs">
+                                        {cat.monthlyBreakdown.map((m: any) => (
+                                            <div key={m.month} className="flex justify-between text-muted-foreground">
+                                                <span>{m.month}</span>
+                                                <span>-${m.total.toFixed(2)}</span>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="font-bold text-sm text-red-500">
-                                        -${cat.total.toFixed(2)}
+                                </details>
+                            ))}
+
+                            {/* Distribution Chart (Simple Bars) */}
+                            {chartData && (
+                                <div className="mt-8 p-4 bg-card border border-border rounded-xl">
+                                    <h3 className="text-sm font-bold mb-4">Expenses Overview</h3>
+                                    <div className="space-y-3">
+                                        {chartData.map((d: any) => (
+                                            <div key={d.name} className="flex flex-col gap-1">
+                                                <div className="flex justify-between text-xs">
+                                                    <span>{d.name}</span>
+                                                    <span className="text-primary">{d.percentage}%</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-primary"
+                                                        style={{ width: `${d.percentage}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            ))}
+                            )}
                             {categoryData.length === 0 && (
                                 <p className="text-center text-muted-foreground py-8">No expenses found.</p>
                             )}
