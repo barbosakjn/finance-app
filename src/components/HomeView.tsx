@@ -52,7 +52,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
 
     const fetchTransactions = () => {
         // Fetch recent transactions and balance
-        fetch('/api/transactions')
+        fetch(`/api/transactions?t=${Date.now()}`)
             .then(res => res.json())
             .then(data => {
                 setTransactions(data.slice(0, 5)); // Only show recent 5
@@ -62,11 +62,28 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
             });
 
         // Fetch upcoming bills
-        fetch('/api/transactions?upcoming=true')
+        // Fetch upcoming bills
+        fetch(`/api/transactions?upcoming=true&t=${Date.now()}`, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) {
-                    setUpcomingBills(data);
+                    // Apply Sort Order from LocalStorage
+                    const savedOrder = localStorage.getItem('bills-order');
+                    let sortedData = data;
+
+                    if (savedOrder) {
+                        const orderIds = JSON.parse(savedOrder);
+                        sortedData.sort((a: any, b: any) => {
+                            const indexA = orderIds.indexOf(a.id);
+                            const indexB = orderIds.indexOf(b.id);
+
+                            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                            if (indexA !== -1) return -1;
+                            if (indexB !== -1) return 1;
+                            return 0;
+                        });
+                    }
+                    setUpcomingBills(sortedData.slice(0, 3)); // Show top 3 after custom sort
                 }
             });
     };

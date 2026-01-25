@@ -104,8 +104,8 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Categories
 const CATEGORIES = [
-    "Housing", "Transportation", "Food", "Health", "Shopping",
-    "Entertainment", "Financial", "Education", "Other", "IA STUFF"
+    "Mercado", "Gas", "Restaurante", "Health", "Shopping",
+    "Entertaiment", "Extras", "Education", "Mensal", "IA Stuff"
 ];
 
 // 3. Photo Handler (Receipt Logic)
@@ -152,7 +152,8 @@ bot.on('photo', async (ctx) => {
                     amount: Math.abs(data.amount), // Force positive amount for correct expense calculation
                     type: 'EXPENSE',
                     status: 'PAID',
-                    date: new Date(data.date || new Date()),
+                    // Fix Date: If AI returns YYYY-MM-DD, append T12:00:00 to prevent timezone rollback
+                    date: data.date ? new Date(`${data.date}T12:00:00`) : new Date(),
                     category: 'Uncategorized', // Temporary
                     isBill: false
                 }

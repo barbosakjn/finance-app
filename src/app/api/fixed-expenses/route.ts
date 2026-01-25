@@ -21,7 +21,7 @@ export async function POST(req: Request) {
                 name: body.name,
                 amount: parseFloat(body.amount),
                 dueDay: parseInt(body.dueDay),
-                category: body.category || 'Fixed Expense',
+                category: body.category || 'Mensal',
                 autoPay: body.autoPay || false,
             },
         });

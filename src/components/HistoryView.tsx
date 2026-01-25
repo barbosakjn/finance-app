@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Search, Plus, Filter, MoreHorizontal, Edit, Trash } from "lucide-react";
+import { Search, Plus, Filter, MoreHorizontal, Edit, Trash, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,16 +31,16 @@ import {
 type SortBy = "NEWEST" | "OLDEST" | "HIGHEST" | "LOWEST";
 
 const CATEGORY_ICONS: Record<string, string> = {
-    "Housing": "/categories/housing.png",
-    "Transportation": "/categories/transportation.png",
-    "Food": "/categories/food.png",
-    "Health": "/categories/health.png",
+    "Mercado": "/categories/housing.png", // Reusing housing icon for Mercado as placeholder or requested? User didn't specify icon change, just name.
+    "Restaurante": "/categories/food.png",
     "Shopping": "/categories/shopping.png",
-    "Entertainment": "/categories/entertainment.png",
-    "Financial": "/categories/financial.png",
+    "Health": "/categories/health.png",
+    "Entertaiment": "/categories/entertainment.png",
+    "Extras": "/categories/financial.png",
     "Education": "/categories/education.png",
-    "Other": "/categories/other.png",
-    "IA STUFF": "/categories/ia_stuff.png"
+    "Mensal": "/categories/other.png",
+    "Gas": "/categories/transportation.png",
+    "IA Stuff": "/categories/ia_stuff.png"
 };
 
 export default function HistoryView() {
@@ -52,19 +52,45 @@ export default function HistoryView() {
     const [newTransaction, setNewTransaction] = useState({
         description: '',
         amount: '',
-        category: 'Housing',
+        category: 'Mercado',
         type: 'EXPENSE',
         date: new Date().toISOString().split('T')[0]
     });
 
     const [sortBy, setSortBy] = useState<SortBy>("NEWEST");
+    const [visibleCount, setVisibleCount] = useState(20);
 
     useEffect(() => {
         fetchTransactions();
     }, []);
 
+    const [recoveredReceipts, setRecoveredReceipts] = useState<any[]>([]);
+
+    useEffect(() => {
+        // Check for lost receipts
+        fetch('/api/recovery')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data) && data.length > 0) {
+                    setRecoveredReceipts(data);
+                }
+            });
+    }, []);
+
+    const handleRecover = async () => {
+        const ids = recoveredReceipts.map(r => r.id);
+        await fetch('/api/recovery', {
+            method: 'POST',
+            body: JSON.stringify({ ids })
+        });
+        setRecoveredReceipts([]);
+        fetchTransactions(); // Refresh list
+        alert("Receipts moved to top of list!");
+    };
+
     const fetchTransactions = () => {
-        fetch('/api/transactions')
+        // Add timestamp to prevent browser caching
+        fetch(`/api/transactions?t=${Date.now()}`, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => setTransactions(data));
     };
@@ -86,16 +112,27 @@ export default function HistoryView() {
         setNewTransaction({
             description: '',
             amount: '',
-            category: 'Housing',
+            category: 'Mercado',
             type: 'EXPENSE',
             date: new Date().toISOString().split('T')[0]
         });
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this transaction?")) return;
-        await fetch(`/api/transactions?id=${id}`, { method: 'DELETE' });
+    // Delete Dialog State
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+
+    const confirmDelete = (id: string) => {
+        setTransactionToDelete(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDelete = async () => {
+        if (!transactionToDelete) return;
+        await fetch(`/api/transactions?id=${transactionToDelete}`, { method: 'DELETE' });
         fetchTransactions();
+        setIsDeleteDialogOpen(false);
+        setTransactionToDelete(null);
     };
 
     const handleEditClick = (transaction: any) => {
@@ -124,8 +161,32 @@ export default function HistoryView() {
         }
     };
 
+    const handleExport = () => {
+        const headers = ["Date", "Description", "Category", "Type", "Amount", "Status"];
+        const csvContent = [
+            headers.join(","),
+            ...transactions.map(t => [
+                new Date(t.date).toLocaleDateString(),
+                `"${t.description.replace(/"/g, '""')}"`, // Escape quotes
+                t.category,
+                t.type,
+                t.amount.toFixed(2),
+                t.status
+            ].join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `transactions_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const filteredTransactions = useMemo(
-        () => transactions.filter(t => t.type === filter),
+        () => transactions.filter(t => t.type === filter && t.status === 'PAID'),
         [transactions, filter]
     );
 
@@ -169,15 +230,44 @@ export default function HistoryView() {
         const grouped = expenses.reduce((acc: any, t) => {
             const cat = t.category || 'Uncategorized';
             if (!acc[cat]) {
-                acc[cat] = { name: cat, total: 0, count: 0 };
+                acc[cat] = { name: cat, total: 0, count: 0, items: [] };
             }
             acc[cat].total += t.amount;
             acc[cat].count += 1;
+            acc[cat].items.push(t);
             return acc;
         }, {});
 
-        return Object.values(grouped).sort((a: any, b: any) => b.total - a.total);
+        // Sort categories by total
+        const sortedCats = Object.values(grouped).sort((a: any, b: any) => b.total - a.total);
+
+        // Process monthly breakdown for each category
+        return sortedCats.map((cat: any) => {
+            const monthlyGroup = cat.items.reduce((mAcc: any, item: any) => {
+                const monthKey = new Date(item.date).toLocaleString('default', { month: 'long', year: 'numeric' });
+                if (!mAcc[monthKey]) mAcc[monthKey] = 0;
+                mAcc[monthKey] += item.amount;
+                return mAcc;
+            }, {});
+
+            return {
+                ...cat,
+                monthlyBreakdown: Object.entries(monthlyGroup).map(([month, total]) => ({ month, total }))
+            };
+        });
     }, [transactions, filter]);
+
+    // Simple Bar Chart Logic (Percentage)
+    const chartData = useMemo(() => {
+        if (filter !== "CATEGORIES" || categoryData.length === 0) return null;
+        const totalExp = categoryData.reduce((acc: number, c: any) => acc + c.total, 0);
+        return categoryData.map((c: any) => ({
+            name: c.name,
+            value: c.total,
+            percentage: ((c.total / totalExp) * 100).toFixed(1),
+            color: 'bg-primary' // simplified color logic
+        }));
+    }, [categoryData, filter]);
 
     const sortLabel = useMemo(() => {
         switch (sortBy) {
@@ -208,11 +298,47 @@ export default function HistoryView() {
                     <h2 className="text-4xl font-bold text-primary">${totalBalance.toFixed(2)}</h2>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm opacity-70">
-                    {/* Placeholder for trend */}
-                    <span>↑ Up by 4% from last month</span>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm opacity-70">
+                        {/* Placeholder for trend */}
+                        <span>↑ Up by 4% from last month</span>
+                    </div>
+                    <Button
+                        onClick={() => setIsAddDialogOpen(true)}
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 gap-1 rounded-full px-4"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add New
+                    </Button>
                 </div>
             </div>
+
+            {/* Recovery & Debug Banner */}
+            {recoveredReceipts.length > 0 && (
+                <div className="mx-6 mb-4 bg-yellow-500/10 border border-yellow-500/50 p-4 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                        <div>
+                            <p className="font-bold text-yellow-600 text-sm">Diagnostic Tool found {recoveredReceipts.length} items</p>
+                            <p className="text-xs text-yellow-600/80">Check below why they might be hidden:</p>
+                        </div>
+                        <Button
+                            size="sm"
+                            className="bg-yellow-600 text-white hover:bg-yellow-700"
+                            onClick={handleRecover}
+                        >
+                            Force Fix (Move to Today)
+                        </Button>
+                    </div>
+                    <div className="space-y-1">
+                        {recoveredReceipts.map(r => (
+                            <div key={r.id} className="text-[10px] bg-white/50 p-1 rounded border border-yellow-200 text-yellow-800 font-mono">
+                                💰 ${r.amount} | Date: {r.date?.split('T')[0]} | Status: {r.status} | Cat: {r.category}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Content Area */}
             <div className="flex-1 bg-background p-6 overflow-y-auto pb-24">
@@ -239,32 +365,43 @@ export default function HistoryView() {
                         </button>
                     </div>
 
-                    {/* Sort by dropdown */}
-                    {filter !== "CATEGORIES" && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    Sort by: <span className="font-semibold">{sortLabel}</span>
-                                    <Filter className="h-3 w-3" />
-                                </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => setSortBy("NEWEST")}>
-                                    Newest
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setSortBy("OLDEST")}>
-                                    Oldest
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setSortBy("HIGHEST")}>
-                                    Highest amount
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setSortBy("LOWEST")}>
-                                    Lowest amount
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {/* Export Button */}
+                        <button
+                            onClick={handleExport}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                            title="Export to CSV"
+                        >
+                            <Download className="h-4 w-4" />
+                        </button>
+
+                        {/* Sort by dropdown */}
+                        {filter !== "CATEGORIES" && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        Sort by: <span className="font-semibold">{sortLabel}</span>
+                                        <Filter className="h-3 w-3" />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => setSortBy("NEWEST")}>
+                                        Newest
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setSortBy("OLDEST")}>
+                                        Oldest
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setSortBy("HIGHEST")}>
+                                        Highest amount
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setSortBy("LOWEST")}>
+                                        Lowest amount
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
                 </div>
 
                 {/* List */}
@@ -273,25 +410,63 @@ export default function HistoryView() {
                         // Categories View
                         <>
                             {categoryData.map((cat: any) => (
-                                <div key={cat.name} className="flex items-center justify-between bg-card p-3 rounded-lg shadow-sm border border-border">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 bg-secondary rounded-full flex items-center justify-center overflow-hidden border border-border">
-                                            {CATEGORY_ICONS[cat.name] ? (
-                                                <img src={CATEGORY_ICONS[cat.name]} alt={cat.name} className="h-full w-full object-cover" />
-                                            ) : (
-                                                <span className="text-xs font-bold text-primary">{cat.name.charAt(0).toUpperCase()}</span>
-                                            )}
+                                <details key={cat.name} className="group bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+                                    <summary className="flex items-center justify-between p-3 cursor-pointer list-none hover:bg-secondary/50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 bg-secondary rounded-full flex items-center justify-center overflow-hidden border border-border">
+                                                {CATEGORY_ICONS[cat.name] ? (
+                                                    <img src={CATEGORY_ICONS[cat.name]} alt={cat.name} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xs font-bold text-primary">{cat.name.charAt(0).toUpperCase()}</span>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-xs text-foreground">{cat.name}</p>
+                                                <p className="text-[10px] text-muted-foreground">{cat.count} transactions</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-xs text-foreground">{cat.name}</p>
-                                            <p className="text-[10px] text-muted-foreground">{cat.count} transactions</p>
+                                        <div className="flex items-center gap-2">
+                                            <div className="font-bold text-sm text-red-500">
+                                                -${cat.total.toFixed(2)}
+                                            </div>
+                                            <div className="transition-transform group-open:rotate-180">▼</div>
                                         </div>
+                                    </summary>
+
+                                    {/* Sub-items (Monthly Breakdown) */}
+                                    <div className="bg-secondary/20 p-3 space-y-2 border-t border-border/50 text-xs">
+                                        {cat.monthlyBreakdown.map((m: any) => (
+                                            <div key={m.month} className="flex justify-between text-muted-foreground">
+                                                <span>{m.month}</span>
+                                                <span>-${m.total.toFixed(2)}</span>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="font-bold text-sm text-red-500">
-                                        -${cat.total.toFixed(2)}
+                                </details>
+                            ))}
+
+                            {/* Distribution Chart (Simple Bars) */}
+                            {chartData && (
+                                <div className="mt-8 p-4 bg-card border border-border rounded-xl">
+                                    <h3 className="text-sm font-bold mb-4">Expenses Overview</h3>
+                                    <div className="space-y-3">
+                                        {chartData.map((d: any) => (
+                                            <div key={d.name} className="flex flex-col gap-1">
+                                                <div className="flex justify-between text-xs">
+                                                    <span>{d.name}</span>
+                                                    <span className="text-primary">{d.percentage}%</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-primary"
+                                                        style={{ width: `${d.percentage}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            ))}
+                            )}
                             {categoryData.length === 0 && (
                                 <p className="text-center text-muted-foreground py-8">No expenses found.</p>
                             )}
@@ -299,7 +474,7 @@ export default function HistoryView() {
                     ) : (
                         // Standard List
                         <>
-                            {sortedTransactions.map((t) => (
+                            {sortedTransactions.slice(0, visibleCount).map((t) => (
                                 <div
                                     key={t.id}
                                     className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-border"
@@ -340,7 +515,7 @@ export default function HistoryView() {
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem
-                                                    onClick={() => handleDelete(t.id)}
+                                                    onClick={() => confirmDelete(t.id)}
                                                     className="text-destructive"
                                                 >
                                                     <Trash className="mr-2 h-4 w-4" /> Delete
@@ -350,6 +525,17 @@ export default function HistoryView() {
                                     </div>
                                 </div>
                             ))}
+                            {visibleCount < sortedTransactions.length && (
+                                <div className="flex justify-center pt-4">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setVisibleCount(prev => prev + 20)}
+                                        className="text-xs"
+                                    >
+                                        Load More
+                                    </Button>
+                                </div>
+                            )}
                             {sortedTransactions.length === 0 && (
                                 <p className="text-center text-muted-foreground py-8">
                                     No {filter.toLowerCase()} found.
@@ -360,15 +546,7 @@ export default function HistoryView() {
                 </div>
             </div>
 
-            {/* Floating Add Button */}
-            <div className="absolute bottom-20 right-6">
-                <Button
-                    onClick={() => setIsAddDialogOpen(true)}
-                    className="h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-yellow-500 text-black flex items-center justify-center"
-                >
-                    <Plus className="h-6 w-6" />
-                </Button>
-            </div>
+            {/* Content Area */}
 
             {/* Add Transaction Dialog */}
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -542,6 +720,6 @@ export default function HistoryView() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }

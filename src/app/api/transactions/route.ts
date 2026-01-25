@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic'; // Prevent Next.js from caching this route
+
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
@@ -15,7 +17,7 @@ export async function GET(req: Request) {
                 orderBy: {
                     dueDate: 'asc',
                 },
-                take: 5,
+                // take: 5, // Removed to allow client-side DnD sorting
             });
             return NextResponse.json(transactions);
         }
