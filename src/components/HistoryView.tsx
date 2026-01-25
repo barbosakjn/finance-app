@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Search, Plus, Filter, MoreHorizontal, Edit, Trash } from "lucide-react";
+import { Search, Plus, Filter, MoreHorizontal, Edit, Trash, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -159,6 +159,30 @@ export default function HistoryView() {
         } else {
             alert("Error updating transaction");
         }
+    };
+
+    const handleExport = () => {
+        const headers = ["Date", "Description", "Category", "Type", "Amount", "Status"];
+        const csvContent = [
+            headers.join(","),
+            ...transactions.map(t => [
+                new Date(t.date).toLocaleDateString(),
+                `"${t.description.replace(/"/g, '""')}"`, // Escape quotes
+                t.category,
+                t.type,
+                t.amount.toFixed(2),
+                t.status
+            ].join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `transactions_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const filteredTransactions = useMemo(
@@ -337,32 +361,43 @@ export default function HistoryView() {
                         </button>
                     </div>
 
-                    {/* Sort by dropdown */}
-                    {filter !== "CATEGORIES" && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    Sort by: <span className="font-semibold">{sortLabel}</span>
-                                    <Filter className="h-3 w-3" />
-                                </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => setSortBy("NEWEST")}>
-                                    Newest
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setSortBy("OLDEST")}>
-                                    Oldest
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setSortBy("HIGHEST")}>
-                                    Highest amount
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setSortBy("LOWEST")}>
-                                    Lowest amount
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {/* Export Button */}
+                        <button
+                            onClick={handleExport}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                            title="Export to CSV"
+                        >
+                            <Download className="h-4 w-4" />
+                        </button>
+
+                        {/* Sort by dropdown */}
+                        {filter !== "CATEGORIES" && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        Sort by: <span className="font-semibold">{sortLabel}</span>
+                                        <Filter className="h-3 w-3" />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => setSortBy("NEWEST")}>
+                                        Newest
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setSortBy("OLDEST")}>
+                                        Oldest
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setSortBy("HIGHEST")}>
+                                        Highest amount
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setSortBy("LOWEST")}>
+                                        Lowest amount
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
                 </div>
 
                 {/* List */}
