@@ -52,7 +52,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
 
     const fetchTransactions = () => {
         // Fetch recent transactions and balance
-        fetch('/api/transactions')
+        fetch(`/api/transactions?t=${Date.now()}`)
             .then(res => res.json())
             .then(data => {
                 setTransactions(data.slice(0, 5)); // Only show recent 5
@@ -63,7 +63,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
 
         // Fetch upcoming bills
         // Fetch upcoming bills
-        fetch('/api/transactions?upcoming=true', { cache: 'no-store' })
+        fetch(`/api/transactions?upcoming=true&t=${Date.now()}`, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) {
