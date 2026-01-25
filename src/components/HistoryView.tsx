@@ -153,10 +153,14 @@ export default function HistoryView() {
         return items;
     }, [filteredTransactions, sortBy]);
 
-    const totalBalance = transactions.reduce(
-        (acc, t) => t.type === 'INCOME' ? acc + t.amount : acc - t.amount,
-        0
-    );
+    const totalBalance = transactions.reduce((acc, t) => {
+        if (t.type === 'INCOME') {
+            return acc + t.amount;
+        } else if (t.type === 'EXPENSE' && t.status === 'PAID') {
+            return acc - t.amount;
+        }
+        return acc;
+    }, 0);
 
     const categoryData = useMemo(() => {
         if (filter !== "CATEGORIES") return [];
