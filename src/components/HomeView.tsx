@@ -151,7 +151,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
             <div className="px-6 mb-6 mt-4">
                 <div className="bg-gradient-to-br from-yellow-600 to-yellow-800 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden border border-yellow-500/20">
                     <div className="absolute top-4 right-4 h-24 w-24 rounded-full overflow-hidden border-4 border-white/30 shadow-lg">
-                        <img src="/profile-circle.png" alt="Profile" className="h-full w-full object-cover" />
+                        <img src="/profile-circle.png?v=2" alt="Profile" className="h-full w-full object-cover" />
                     </div>
                     <div className="relative z-10">
                         <p className="text-sm opacity-80 mb-1">Total Balance</p>
