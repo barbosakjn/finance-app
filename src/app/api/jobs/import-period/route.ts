@@ -18,7 +18,12 @@ export async function POST(req: Request) {
         }
 
         const start = new Date(startDate);
+        // Ajusta para o início do dia (00:00:00.000)
+        start.setUTCHours(0, 0, 0, 0);
+
         const end = new Date(endDate);
+        // Ajusta para o final do dia (23:59:59.999)
+        end.setUTCHours(23, 59, 59, 999);
 
         // pega todos os jobs nesse período (usando JobExtra)
         const jobs = await prisma.jobExtra.findMany({

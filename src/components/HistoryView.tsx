@@ -58,6 +58,7 @@ export default function HistoryView() {
     });
 
     const [sortBy, setSortBy] = useState<SortBy>("NEWEST");
+    const [visibleCount, setVisibleCount] = useState(20);
 
     useEffect(() => {
         fetchTransactions();
@@ -240,9 +241,19 @@ export default function HistoryView() {
                     <h2 className="text-4xl font-bold text-primary">${totalBalance.toFixed(2)}</h2>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm opacity-70">
-                    {/* Placeholder for trend */}
-                    <span>↑ Up by 4% from last month</span>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm opacity-70">
+                        {/* Placeholder for trend */}
+                        <span>↑ Up by 4% from last month</span>
+                    </div>
+                    <Button
+                        onClick={() => setIsAddDialogOpen(true)}
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 gap-1 rounded-full px-4"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add New
+                    </Button>
                 </div>
             </div>
 
@@ -357,7 +368,7 @@ export default function HistoryView() {
                     ) : (
                         // Standard List
                         <>
-                            {sortedTransactions.map((t) => (
+                            {sortedTransactions.slice(0, visibleCount).map((t) => (
                                 <div
                                     key={t.id}
                                     className="flex items-center justify-between bg-card p-4 rounded-xl shadow-sm border border-border"
@@ -408,6 +419,17 @@ export default function HistoryView() {
                                     </div>
                                 </div>
                             ))}
+                            {visibleCount < sortedTransactions.length && (
+                                <div className="flex justify-center pt-4">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setVisibleCount(prev => prev + 20)}
+                                        className="text-xs"
+                                    >
+                                        Load More
+                                    </Button>
+                                </div>
+                            )}
                             {sortedTransactions.length === 0 && (
                                 <p className="text-center text-muted-foreground py-8">
                                     No {filter.toLowerCase()} found.
@@ -418,15 +440,7 @@ export default function HistoryView() {
                 </div>
             </div>
 
-            {/* Floating Add Button */}
-            <div className="absolute bottom-20 right-6">
-                <Button
-                    onClick={() => setIsAddDialogOpen(true)}
-                    className="h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-yellow-500 text-black flex items-center justify-center"
-                >
-                    <Plus className="h-6 w-6" />
-                </Button>
-            </div>
+            {/* Content Area */}
 
             {/* Add Transaction Dialog */}
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
