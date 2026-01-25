@@ -150,10 +150,8 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
             {/* Balance Card */}
             <div className="px-6 mb-6 mt-4">
                 <div className="bg-gradient-to-br from-yellow-600 to-yellow-800 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden border border-yellow-500/20">
-                    <div className="absolute top-0 right-0 p-4 opacity-20">
-                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="50" cy="50" r="50" fill="white" />
-                        </svg>
+                    <div className="absolute top-4 right-4 h-24 w-24 rounded-full overflow-hidden border-4 border-white/30 shadow-lg">
+                        <img src="/profile-circle.png" alt="Profile" className="h-full w-full object-cover" />
                     </div>
                     <div className="relative z-10">
                         <p className="text-sm opacity-80 mb-1">Total Balance</p>
