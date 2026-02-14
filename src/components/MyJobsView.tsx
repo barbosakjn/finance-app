@@ -29,10 +29,14 @@ export default function MyJobsView() {
     const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
 
-    // data de início da quinzena
-    const [periodStart, setPeriodStart] = useState(
-        new Date().toISOString().split("T")[0]
-    );
+    // data de início da quinzena (Default: Last Monday)
+    const [periodStart, setPeriodStart] = useState(() => {
+        const d = new Date();
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+        const lastMonday = new Date(d.setDate(diff));
+        return lastMonday.toISOString().split("T")[0];
+    });
 
     // formulário de extra job
     const [newJob, setNewJob] = useState<NewJobForm>({
