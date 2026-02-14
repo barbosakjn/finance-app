@@ -36,8 +36,24 @@ export async function POST(req: Request) {
         });
 
         if (jobs.length === 0) {
+            // DEBUG: Count total jobs to see if DB is empty
+            const totalJobs = await prisma.jobExtra.count();
+            const firstJob = await prisma.jobExtra.findFirst({ orderBy: { date: 'asc' } });
+            const lastJob = await prisma.jobExtra.findFirst({ orderBy: { date: 'desc' } });
+
             return NextResponse.json(
-                { error: "Nenhum job encontrado nesse período." },
+                {
+                    error: "Nenhum job encontrado nesse período.",
+                    debug: {
+                        startRequested: startDate,
+                        endRequested: endDate,
+                        serverStart: start.toISOString(),
+                        serverEnd: end.toISOString(),
+                        totalJobsInDb: totalJobs,
+                        firstJobDate: firstJob?.date.toISOString(),
+                        lastJobDate: lastJob?.date.toISOString()
+                    }
+                },
                 { status: 404 }
             );
         }

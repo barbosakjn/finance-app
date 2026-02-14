@@ -295,7 +295,20 @@ export default function MyJobsView() {
             const data = await res.json();
 
             if (!res.ok) {
-                alert(data.error || "Erro ao importar quinzena.");
+                if (data.debug) {
+                    alert(
+                        `DEBUG INFO (Tire print e me mande):\n` +
+                        `Start Req: ${data.debug.startRequested}\n` +
+                        `End Req: ${data.debug.endRequested}\n` +
+                        `Server Start: ${data.debug.serverStart}\n` +
+                        `Server End: ${data.debug.serverEnd}\n` +
+                        `Total Jobs DB: ${data.debug.totalJobsInDb}\n` +
+                        `First Job: ${data.debug.firstJobDate}\n` +
+                        `Last Job: ${data.debug.lastJobDate}`
+                    );
+                } else {
+                    alert(data.error || "Erro ao importar quinzena.");
+                }
                 return;
             }
 
