@@ -28,7 +28,7 @@ export default function MyJobsView() {
     const [error, setError] = useState<string | null>(null);
     const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
-    const [filterByPeriod, setFilterByPeriod] = useState(true);
+    // REMOVIDO: const [filterByPeriod, setFilterByPeriod] = useState(true);
 
     // data de início da quinzena
     const [periodStart, setPeriodStart] = useState(
@@ -255,42 +255,35 @@ export default function MyJobsView() {
         }
     };
 
-    // ===== FILTER LOGIC =====
-    const filteredJobs = useMemo(() => {
-        if (!filterByPeriod || !periodStart) return jobs;
+    // ===== PERIOD LOGIC (FOR STATS & IMPORT) =====
+    const periodJobs = useMemo(() => {
+        if (!periodStart) return [];
 
         const start = new Date(periodStart);
-        // Ensure start is treated as start of day for comparison matching the import logic
-        // If periodStart is "YYYY-MM-DD", new Date(periodStart) is UTC midnight.
-        // We match logic: start <= jobDate <= end
-
         const end = new Date(start);
         end.setDate(start.getDate() + 13);
-        // To cover the full end day:
         end.setHours(23, 59, 59, 999);
-        // Note: The import logic does server-side 23:59:59.999.
-        // If we use string comparison it might be simpler, but Date comparison is robust if consistent.
 
         return jobs.filter(job => {
             const jobDate = new Date(job.date);
             return jobDate >= start && jobDate <= end;
         });
-    }, [jobs, periodStart, filterByPeriod]);
+    }, [jobs, periodStart]);
 
-    // ===== TOTAL / OPERATIONAL COST / FINAL TOTAL =====
-    const subtotal = useMemo(
-        () => filteredJobs.reduce((sum, job) => sum + job.price, 0),
-        [filteredJobs]
+    // ===== TOTALS =====
+
+    // 1. Period Totals (What will be imported)
+    const periodSubtotal = useMemo(
+        () => periodJobs.reduce((sum, job) => sum + job.price, 0),
+        [periodJobs]
     );
+    const periodOpCost = useMemo(() => periodSubtotal * 0.07, [periodSubtotal]);
+    const periodNet = useMemo(() => periodSubtotal - periodOpCost, [periodSubtotal, periodOpCost]);
 
-    const operationalCost = useMemo(
-        () => subtotal * 0.07,
-        [subtotal]
-    );
-
-    const finalTotal = useMemo(
-        () => subtotal - operationalCost,
-        [subtotal, operationalCost]
+    // 2. History Totals (All jobs)
+    const historySubtotal = useMemo(
+        () => jobs.reduce((sum, job) => sum + job.price, 0),
+        [jobs]
     );
 
     // ===== IMPORTAR QUINZENA PARA O BALANCE =====
@@ -358,23 +351,9 @@ export default function MyJobsView() {
                 {/* CONTROLES SUPERIORES (PERIOD START) */}
                 <section className="bg-card border border-border rounded-xl p-4 flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                        <div className="flex justify-between items-center">
-                            <label className="text-xs text-muted-foreground font-medium">
-                                DATA DE INÍCIO DA QUINZENA
-                            </label>
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs text-muted-foreground cursor-pointer select-none" htmlFor="filter-toggle">
-                                    Filtrar
-                                </label>
-                                <input
-                                    id="filter-toggle"
-                                    type="checkbox"
-                                    checked={filterByPeriod}
-                                    onChange={(e) => setFilterByPeriod(e.target.checked)}
-                                    className="h-4 w-4 accent-primary"
-                                />
-                            </div>
-                        </div>
+                        <label className="text-xs text-muted-foreground font-medium">
+                            DATA DE INÍCIO DA QUINZENA
+                        </label>
                         <input
                             type="date"
                             className="bg-background border border-input rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary w-full"
@@ -385,7 +364,7 @@ export default function MyJobsView() {
                             }}
                         />
                         <p className="text-[10px] text-muted-foreground">
-                            Usada para gerar rotas e importar para o saldo.
+                            Define o período de importação (14 dias).
                         </p>
                     </div>
 
@@ -486,11 +465,9 @@ export default function MyJobsView() {
                 <section className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <h2 className="font-semibold text-sm">
-                                {filterByPeriod ? "Jobs da Quinzena" : "Todos os jobs"}
-                            </h2>
+                            <h2 className="font-semibold text-sm">Todos os jobs</h2>
                             <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full">
-                                {filteredJobs.length} itens
+                                {jobs.length} itens
                             </span>
                         </div>
                         <div className="flex gap-2">
@@ -532,15 +509,13 @@ export default function MyJobsView() {
                         <p className="text-sm text-red-400 text-center py-4">{error}</p>
                     )}
 
-                    {!loading && !error && filteredJobs.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-8">
-                            {jobs.length > 0 && filterByPeriod ? "Nenhum job nesta quinzena." : "Nenhum job registrado."}
-                        </p>
+                    {!loading && !error && jobs.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-8">Nenhum job registrado.</p>
                     )}
 
-                    {!loading && !error && filteredJobs.length > 0 && (
+                    {!loading && !error && jobs.length > 0 && (
                         <div className="space-y-3">
-                            {filteredJobs.map((job) => {
+                            {jobs.map((job) => {
                                 const routeJob = isRoute(job);
                                 const isSelected = selectedJobs.has(job.id);
 
@@ -613,19 +588,41 @@ export default function MyJobsView() {
                                 );
                             })}
 
-                            {/* SUBTOTAL / OP COST / TOTAL */}
-                            <div className="mt-6 pt-4 border-t border-border space-y-2">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Subtotal</span>
-                                    <span className="font-medium">${subtotal.toFixed(2)}</span>
+                            {/* STATS SECTION - DUAL DISPLAY */}
+                            <div className="mt-8 space-y-4">
+
+                                {/* 1. PERIOD STATS (The "Import" value) */}
+                                <div className="bg-secondary/30 rounded-lg p-3 border border-border">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-xs font-bold text-primary uppercase tracking-wide">
+                                            Resumo da Quinzena
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground">
+                                            ({new Date(periodStart).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })} - {new Date(new Date(periodStart).setDate(new Date(periodStart).getDate() + 13)).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })})
+                                        </span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-muted-foreground">Subtotal ({periodJobs.length} jobs)</span>
+                                            <span>${periodSubtotal.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-muted-foreground">- 7% Op. Cost</span>
+                                            <span className="text-red-400">-${periodOpCost.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm font-bold pt-1 border-t border-border/50 mt-1">
+                                            <span>A Receber (Import)</span>
+                                            <span className="text-green-400">${periodNet.toFixed(2)}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">- 7% Operational Cost</span>
-                                    <span className="font-medium text-red-400">-${operationalCost.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-base font-bold pt-2 border-t border-border">
-                                    <span className="text-foreground">Total Líquido</span>
-                                    <span className="text-green-400">${finalTotal.toFixed(2)}</span>
+
+                                {/* 2. HISTORY STATS (Global) */}
+                                <div className="px-2 pt-2 border-t border-border mt-2">
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                        <span>Total Histórico (Todos os jobs)</span>
+                                        <span>${historySubtotal.toFixed(2)}</span>
+                                    </div>
                                 </div>
                             </div>
 
