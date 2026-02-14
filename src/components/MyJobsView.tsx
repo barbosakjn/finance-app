@@ -28,7 +28,6 @@ export default function MyJobsView() {
     const [error, setError] = useState<string | null>(null);
     const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
-    // REMOVIDO: const [filterByPeriod, setFilterByPeriod] = useState(true);
 
     // data de início da quinzena
     const [periodStart, setPeriodStart] = useState(
@@ -322,7 +321,6 @@ export default function MyJobsView() {
                 `Total líquido: $${data.totalNet.toFixed(2)}`
             );
 
-            // se quiser, você pode recarregar transactions globais em outro lugar
         } catch (err: any) {
             console.error(err);
             alert(err.message || "Erro ao importar quinzena.");
@@ -519,10 +517,25 @@ export default function MyJobsView() {
                                 const routeJob = isRoute(job);
                                 const isSelected = selectedJobs.has(job.id);
 
+                                // Check if job is in the selected period
+                                const jobDate = new Date(job.date);
+                                const start = new Date(periodStart);
+                                // Ensure consistent timezone handling by treating strings as simpler date components if needed
+                                // but for now assuming local timezone consistency
+                                const end = new Date(start);
+                                end.setDate(start.getDate() + 13);
+                                end.setHours(23, 59, 59, 999);
+                                const isInPeriod = jobDate >= start && jobDate <= end;
+
                                 return (
                                     <div
                                         key={job.id}
-                                        className={`flex flex-col gap-2 p-3 rounded-lg border transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border bg-background/50'}`}
+                                        className={`flex flex-col gap-2 p-3 rounded-lg border transition-all ${isSelected
+                                                ? 'border-primary bg-primary/5'
+                                                : isInPeriod
+                                                    ? 'border-primary/50 bg-primary/5' // Highlight period jobs
+                                                    : 'border-border bg-background/50 opacity-60' // Dim others
+                                            }`}
                                         onClick={() => {
                                             if (isSelectionMode) toggleSelection(job.id);
                                         }}
@@ -546,9 +559,14 @@ export default function MyJobsView() {
                                                         EXTRA
                                                     </span>
                                                 )}
+                                                {isInPeriod && (
+                                                    <span className="text-[9px] font-bold text-primary border border-primary/30 px-1.5 py-0.5 rounded ml-1">
+                                                        QUINZENA
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-sm text-foreground">
+                                                <span className={`font-bold text-sm ${isInPeriod ? 'text-foreground' : 'text-muted-foreground'}`}>
                                                     ${job.price.toFixed(2)}
                                                 </span>
                                                 {!isSelectionMode && (
@@ -588,42 +606,41 @@ export default function MyJobsView() {
                                 );
                             })}
 
-                            {/* STATS SECTION - DUAL DISPLAY */}
-                            <div className="mt-8 space-y-4">
 
-                                {/* 1. PERIOD STATS (The "Import" value) */}
-                                <div className="bg-secondary/30 rounded-lg p-3 border border-border">
+                            {/* STATS SECTION */}
+                            <div className="mt-8 space-y-4 pt-4 border-t-2 border-primary/20">
+
+                                {/* PERIOD STATS (Highlighted) */}
+                                <div className="space-y-2">
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="text-xs font-bold text-primary uppercase tracking-wide">
-                                            Resumo da Quinzena
+                                        <span className="text-sm font-bold text-primary">
+                                            Total da Quinzena ({periodJobs.length} jobs)
                                         </span>
-                                        <span className="text-[10px] text-muted-foreground">
-                                            ({new Date(periodStart).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })} - {new Date(new Date(periodStart).setDate(new Date(periodStart).getDate() + 13)).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })})
+                                        <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-1 rounded">
+                                            {new Date(periodStart).toLocaleDateString()} até {new Date(new Date(periodStart).setDate(new Date(periodStart).getDate() + 13)).toLocaleDateString()}
                                         </span>
                                     </div>
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between text-xs">
-                                            <span className="text-muted-foreground">Subtotal ({periodJobs.length} jobs)</span>
-                                            <span>${periodSubtotal.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-xs">
-                                            <span className="text-muted-foreground">- 7% Op. Cost</span>
-                                            <span className="text-red-400">-${periodOpCost.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm font-bold pt-1 border-t border-border/50 mt-1">
-                                            <span>A Receber (Import)</span>
-                                            <span className="text-green-400">${periodNet.toFixed(2)}</span>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                {/* 2. HISTORY STATS (Global) */}
-                                <div className="px-2 pt-2 border-t border-border mt-2">
-                                    <div className="flex justify-between text-xs text-muted-foreground">
-                                        <span>Total Histórico (Todos os jobs)</span>
-                                        <span>${historySubtotal.toFixed(2)}</span>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">Subtotal</span>
+                                        <span>${periodSubtotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">- 7% Op. Cost</span>
+                                        <span className="text-red-400">-${periodOpCost.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
+                                        <span>A Receber</span>
+                                        <span className="text-green-400">${periodNet.toFixed(2)}</span>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* TOTAL GERAL (Small) */}
+                            <div className="flex justify-end mt-4 pt-2 border-t border-border/50">
+                                <span className="text-[10px] text-muted-foreground">
+                                    Total Histórico Geral: ${historySubtotal.toFixed(2)}
+                                </span>
                             </div>
 
                             {/* ACTION BUTTONS AT BOTTOM */}
