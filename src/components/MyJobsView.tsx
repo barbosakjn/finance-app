@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { MoreHorizontal, Plus, Map, Briefcase, Trash2, Download, CheckSquare, Square } from "lucide-react";
+import { MoreHorizontal, Plus, Map, Briefcase, Trash2, Download, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Job = {
@@ -28,6 +28,7 @@ export default function MyJobsView() {
     const [error, setError] = useState<string | null>(null);
     const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [filterByPeriod, setFilterByPeriod] = useState(true);
 
     // data de início da quinzena
     const [periodStart, setPeriodStart] = useState(
@@ -254,10 +255,32 @@ export default function MyJobsView() {
         }
     };
 
+    // ===== FILTER LOGIC =====
+    const filteredJobs = useMemo(() => {
+        if (!filterByPeriod || !periodStart) return jobs;
+
+        const start = new Date(periodStart);
+        // Ensure start is treated as start of day for comparison matching the import logic
+        // If periodStart is "YYYY-MM-DD", new Date(periodStart) is UTC midnight.
+        // We match logic: start <= jobDate <= end
+
+        const end = new Date(start);
+        end.setDate(start.getDate() + 13);
+        // To cover the full end day:
+        end.setHours(23, 59, 59, 999);
+        // Note: The import logic does server-side 23:59:59.999.
+        // If we use string comparison it might be simpler, but Date comparison is robust if consistent.
+
+        return jobs.filter(job => {
+            const jobDate = new Date(job.date);
+            return jobDate >= start && jobDate <= end;
+        });
+    }, [jobs, periodStart, filterByPeriod]);
+
     // ===== TOTAL / OPERATIONAL COST / FINAL TOTAL =====
     const subtotal = useMemo(
-        () => jobs.reduce((sum, job) => sum + job.price, 0),
-        [jobs]
+        () => filteredJobs.reduce((sum, job) => sum + job.price, 0),
+        [filteredJobs]
     );
 
     const operationalCost = useMemo(
@@ -295,20 +318,7 @@ export default function MyJobsView() {
             const data = await res.json();
 
             if (!res.ok) {
-                if (data.debug) {
-                    alert(
-                        `DEBUG INFO (Tire print e me mande):\n` +
-                        `Start Req: ${data.debug.startRequested}\n` +
-                        `End Req: ${data.debug.endRequested}\n` +
-                        `Server Start: ${data.debug.serverStart}\n` +
-                        `Server End: ${data.debug.serverEnd}\n` +
-                        `Total Jobs DB: ${data.debug.totalJobsInDb}\n` +
-                        `First Job: ${data.debug.firstJobDate}\n` +
-                        `Last Job: ${data.debug.lastJobDate}`
-                    );
-                } else {
-                    alert(data.error || "Erro ao importar quinzena.");
-                }
+                alert(data.error || "Erro ao importar quinzena.");
                 return;
             }
 
@@ -330,8 +340,6 @@ export default function MyJobsView() {
 
     // Helper para identificar se é rota ou extra
     const isRoute = (job: Job) => {
-        // Pode ser pelo campo type (se a API retornar) ou inferido
-        // Aqui vamos inferir se o time for "ROUTE" ou delivery conter "ROUTE"
         return job.time === "ROUTE" || job.delivery.includes("ROUTE");
     };
 
@@ -350,9 +358,23 @@ export default function MyJobsView() {
                 {/* CONTROLES SUPERIORES (PERIOD START) */}
                 <section className="bg-card border border-border rounded-xl p-4 flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                        <label className="text-xs text-muted-foreground font-medium">
-                            DATA DE INÍCIO DA QUINZENA
-                        </label>
+                        <div className="flex justify-between items-center">
+                            <label className="text-xs text-muted-foreground font-medium">
+                                DATA DE INÍCIO DA QUINZENA
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs text-muted-foreground cursor-pointer select-none" htmlFor="filter-toggle">
+                                    Filtrar
+                                </label>
+                                <input
+                                    id="filter-toggle"
+                                    type="checkbox"
+                                    checked={filterByPeriod}
+                                    onChange={(e) => setFilterByPeriod(e.target.checked)}
+                                    className="h-4 w-4 accent-primary"
+                                />
+                            </div>
+                        </div>
                         <input
                             type="date"
                             className="bg-background border border-input rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary w-full"
@@ -464,9 +486,11 @@ export default function MyJobsView() {
                 <section className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <h2 className="font-semibold text-sm">Todos os jobs</h2>
+                            <h2 className="font-semibold text-sm">
+                                {filterByPeriod ? "Jobs da Quinzena" : "Todos os jobs"}
+                            </h2>
                             <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full">
-                                {jobs.length} itens
+                                {filteredJobs.length} itens
                             </span>
                         </div>
                         <div className="flex gap-2">
@@ -508,13 +532,15 @@ export default function MyJobsView() {
                         <p className="text-sm text-red-400 text-center py-4">{error}</p>
                     )}
 
-                    {!loading && !error && jobs.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-8">Nenhum job registrado.</p>
+                    {!loading && !error && filteredJobs.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                            {jobs.length > 0 && filterByPeriod ? "Nenhum job nesta quinzena." : "Nenhum job registrado."}
+                        </p>
                     )}
 
-                    {!loading && !error && jobs.length > 0 && (
+                    {!loading && !error && filteredJobs.length > 0 && (
                         <div className="space-y-3">
-                            {jobs.map((job) => {
+                            {filteredJobs.map((job) => {
                                 const routeJob = isRoute(job);
                                 const isSelected = selectedJobs.has(job.id);
 
