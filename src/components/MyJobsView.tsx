@@ -29,7 +29,6 @@ export default function MyJobsView() {
     const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
 
-<<<<<<< HEAD
     // data de início da quinzena — preenchida manualmente pelo usuário
     const [periodStart, setPeriodStart] = useState("");
     const [periodEnd, setPeriodEnd] = useState("");
@@ -45,16 +44,6 @@ export default function MyJobsView() {
             setPeriodEnd(getFortnightEnd(val));
         }
     };
-=======
-    // data de início da quinzena (Default: Last Monday)
-    const [periodStart, setPeriodStart] = useState(() => {
-        const d = new Date();
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-        const lastMonday = new Date(d.setDate(diff));
-        return lastMonday.toISOString().split("T")[0];
-    });
->>>>>>> 9a827dc2218190ce32e6e8fc4e7eafd62f9a90d7
 
     // formulário de extra job
     const [newJob, setNewJob] = useState<NewJobForm>({
