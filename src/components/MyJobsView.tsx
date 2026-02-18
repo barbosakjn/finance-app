@@ -603,57 +603,56 @@ export default function MyJobsView() {
                                     </div>
                                 );
                             })}
-
-
-                            {/* STATS SECTION - APENAS QUINZENA */}
-                            {periodStart && periodEnd && (
-                                <div className="mt-8 space-y-4 pt-4 border-t-2 border-primary/20 bg-secondary/10 rounded-xl p-4">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <span className="text-sm font-bold text-primary uppercase tracking-wide">
-                                            Resumo da Quinzena
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-1 rounded">
-                                            {new Date(periodStart + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} até {new Date(periodEnd + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Subtotal ({periodJobs.length} jobs)</span>
-                                        <span className="font-medium">${periodSubtotal.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">- 7% Op. Cost</span>
-                                        <span className="font-medium text-red-400">-${periodOpCost.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-lg font-bold pt-2 border-t border-border mt-2">
-                                        <span className="text-foreground">A Receber</span>
-                                        <span className="text-green-400">${periodNet.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* ACTION BUTTONS AT BOTTOM */}
-                            <div className="pt-6 flex flex-col sm:flex-row gap-3">
-                                <Button
-                                    onClick={handleExportCSV}
-                                    variant="outline"
-                                    className="flex-1 gap-2 text-xs h-10"
-                                    disabled={loading || jobs.length === 0}
-                                >
-                                    <Download className="h-4 w-4" />
-                                    Exportar CSV
-                                </Button>
-                                <Button
-                                    onClick={handleImportPeriod}
-                                    className="flex-1 gap-2 text-xs h-10 bg-primary text-primary-foreground hover:bg-primary/90"
-                                    disabled={loading}
-                                >
-                                    <Briefcase className="h-4 w-4" />
-                                    Importar p/ Saldo
-                                </Button>
-                            </div>
-
                         </div>
                     )}
+
+                    {/* RESUMO DA QUINZENA — aparece sempre que a data estiver selecionada */}
+                    {periodStart && periodEnd && (
+                        <div className="mt-6 space-y-4 pt-4 border-t-2 border-primary/20 bg-secondary/10 rounded-xl p-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <span className="text-sm font-bold text-primary uppercase tracking-wide">
+                                    Resumo da Quinzena
+                                </span>
+                                <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-1 rounded">
+                                    {new Date(periodStart + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} até {new Date(periodEnd + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Subtotal ({periodJobs.length} jobs)</span>
+                                <span className="font-medium">${periodSubtotal.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">- 7% Op. Cost</span>
+                                <span className="font-medium text-red-400">-${periodOpCost.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-lg font-bold pt-2 border-t border-border mt-2">
+                                <span className="text-foreground">A Receber</span>
+                                <span className="text-green-400">${periodNet.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* BOTÕES DE AÇÃO — sempre visíveis */}
+                    <div className="pt-6 flex flex-col sm:flex-row gap-3">
+                        <Button
+                            onClick={handleExportCSV}
+                            variant="outline"
+                            className="flex-1 gap-2 text-xs h-10"
+                            disabled={loading || jobs.length === 0}
+                        >
+                            <Download className="h-4 w-4" />
+                            Exportar CSV
+                        </Button>
+                        <Button
+                            onClick={handleImportPeriod}
+                            className="flex-1 gap-2 text-xs h-10 bg-primary text-primary-foreground hover:bg-primary/90"
+                            disabled={loading}
+                        >
+                            <Briefcase className="h-4 w-4" />
+                            Importar p/ Saldo
+                        </Button>
+                    </div>
+
                 </section>
             </div>
         </div>
