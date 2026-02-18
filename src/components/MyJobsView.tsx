@@ -33,6 +33,15 @@ export default function MyJobsView() {
     const [periodStart, setPeriodStart] = useState("");
     const [periodEnd, setPeriodEnd] = useState("");
 
+    // formulário de extra job
+    const [newJob, setNewJob] = useState<NewJobForm>({
+        date: new Date().toISOString().split("T")[0],
+        pickup: "",
+        delivery: "",
+        time: "",
+        price: "",
+    });
+
     // Atualiza o fim quando o início muda manualmente
     const handlePeriodChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -44,15 +53,6 @@ export default function MyJobsView() {
             setPeriodEnd(getFortnightEnd(val));
         }
     };
-
-    // formulário de extra job
-    const [newJob, setNewJob] = useState<NewJobForm>({
-        date: new Date().toISOString().split("T")[0],
-        pickup: "",
-        delivery: "",
-        time: "",
-        price: "",
-    });
 
     // ===== CARREGAR JOBS =====
     useEffect(() => {
@@ -595,28 +595,30 @@ export default function MyJobsView() {
 
 
                             {/* STATS SECTION - APENAS QUINZENA */}
-                            <div className="mt-8 space-y-4 pt-4 border-t-2 border-primary/20 bg-secondary/10 rounded-xl p-4">
-                                <div className="flex justify-between items-center mb-4">
-                                    <span className="text-sm font-bold text-primary uppercase tracking-wide">
-                                        Resumo da Quinzena
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-1 rounded">
-                                        {new Date(periodStart).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })} até {new Date(new Date(periodStart).setDate(new Date(periodStart).getDate() + 13)).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })}
-                                    </span>
+                            {periodStart && periodEnd && (
+                                <div className="mt-8 space-y-4 pt-4 border-t-2 border-primary/20 bg-secondary/10 rounded-xl p-4">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <span className="text-sm font-bold text-primary uppercase tracking-wide">
+                                            Resumo da Quinzena
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-1 rounded">
+                                            {new Date(periodStart + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} até {new Date(periodEnd + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">Subtotal ({periodJobs.length} jobs)</span>
+                                        <span className="font-medium">${periodSubtotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">- 7% Op. Cost</span>
+                                        <span className="font-medium text-red-400">-${periodOpCost.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-lg font-bold pt-2 border-t border-border mt-2">
+                                        <span className="text-foreground">A Receber</span>
+                                        <span className="text-green-400">${periodNet.toFixed(2)}</span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Subtotal ({periodJobs.length} jobs)</span>
-                                    <span className="font-medium">${periodSubtotal.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">- 7% Op. Cost</span>
-                                    <span className="font-medium text-red-400">-${periodOpCost.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-lg font-bold pt-2 border-t border-border mt-2">
-                                    <span className="text-foreground">A Receber</span>
-                                    <span className="text-green-400">${periodNet.toFixed(2)}</span>
-                                </div>
-                            </div>
+                            )}
 
                             {/* ACTION BUTTONS AT BOTTOM */}
                             <div className="pt-6 flex flex-col sm:flex-row gap-3">
