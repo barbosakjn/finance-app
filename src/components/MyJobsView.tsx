@@ -29,9 +29,22 @@ export default function MyJobsView() {
     const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
 
-    // data de início da quinzena — preenchida manualmente pelo usuário
-    const [periodStart, setPeriodStart] = useState("");
-    const [periodEnd, setPeriodEnd] = useState("");
+    // data de início da quinzena — persistida no localStorage
+    const [periodStart, setPeriodStart] = useState<string>(() => {
+        if (typeof window !== "undefined") {
+            return localStorage.getItem("periodStart") || "";
+        }
+        return "";
+    });
+
+    // periodEnd é sempre derivado do periodStart (sem estado separado)
+    const periodEnd = useMemo(() => {
+        if (!periodStart) return "";
+        const start = new Date(periodStart + "T12:00:00");
+        const end = new Date(start);
+        end.setDate(start.getDate() + 13);
+        return end.toISOString().split("T")[0];
+    }, [periodStart]);
 
     // formulário de extra job
     const [newJob, setNewJob] = useState<NewJobForm>({
@@ -42,16 +55,14 @@ export default function MyJobsView() {
         price: "",
     });
 
-    // Atualiza o fim quando o início muda manualmente
+    // Atualiza o início e persiste no localStorage
     const handlePeriodChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setPeriodStart(val);
-        setNewJob((prev) => ({ ...prev, date: val }));
-
-        if (val) {
-            const { getFortnightEnd } = require("@/lib/utils");
-            setPeriodEnd(getFortnightEnd(val));
+        if (typeof window !== "undefined") {
+            localStorage.setItem("periodStart", val);
         }
+        setNewJob((prev) => ({ ...prev, date: val }));
     };
 
     // ===== CARREGAR JOBS =====
@@ -365,7 +376,7 @@ export default function MyJobsView() {
                         />
                         {periodStart && periodEnd && (
                             <p className="text-xs font-bold text-primary">
-                                Período: {new Date(periodStart).toLocaleDateString()} até {new Date(periodEnd).toLocaleDateString()}
+                                Período: {new Date(periodStart + "T12:00:00").toLocaleDateString()} até {new Date(periodEnd + "T12:00:00").toLocaleDateString()}
                             </p>
                         )}
                         <p className="text-[10px] text-muted-foreground">
@@ -602,7 +613,7 @@ export default function MyJobsView() {
                                             Resumo da Quinzena
                                         </span>
                                         <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-1 rounded">
-                                            {new Date(periodStart + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} até {new Date(periodEnd + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                            {new Date(periodStart + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} até {new Date(periodEnd + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
                                         </span>
                                     </div>
                                     <div className="flex justify-between text-sm">
