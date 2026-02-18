@@ -30,9 +30,29 @@ export default function MyJobsView() {
     const [isSelectionMode, setIsSelectionMode] = useState(false);
 
     // data de início da quinzena
-    const [periodStart, setPeriodStart] = useState(
-        new Date().toISOString().split("T")[0]
-    );
+    const [periodStart, setPeriodStart] = useState("");
+    const [periodEnd, setPeriodEnd] = useState("");
+
+    useEffect(() => {
+        // Inicializa com a quinzena correta baseada na data atual
+        // Importamos dinamicamente para evitar erro de SSR se necessário, ou assumimos que é client component
+        const { getFortnightStart, getFortnightEnd } = require("@/lib/utils");
+        const start = getFortnightStart(new Date());
+        setPeriodStart(start);
+        setPeriodEnd(getFortnightEnd(start));
+    }, []);
+
+    // Atualiza o fim quando o início muda manualmente
+    const handlePeriodChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setPeriodStart(val);
+        setNewJob((prev) => ({ ...prev, date: val }));
+
+        if (val) {
+            const { getFortnightEnd } = require("@/lib/utils");
+            setPeriodEnd(getFortnightEnd(val));
+        }
+    };
 
     // formulário de extra job
     const [newJob, setNewJob] = useState<NewJobForm>({
@@ -344,11 +364,13 @@ export default function MyJobsView() {
                             type="date"
                             className="bg-background border border-input rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary w-full"
                             value={periodStart}
-                            onChange={(e) => {
-                                setPeriodStart(e.target.value);
-                                setNewJob((prev) => ({ ...prev, date: e.target.value }));
-                            }}
+                            onChange={handlePeriodChange}
                         />
+                        {periodStart && periodEnd && (
+                            <p className="text-xs font-bold text-primary">
+                                Período: {new Date(periodStart).toLocaleDateString()} até {new Date(periodEnd).toLocaleDateString()}
+                            </p>
+                        )}
                         <p className="text-[10px] text-muted-foreground">
                             Usada para gerar rotas e importar para o saldo.
                         </p>
