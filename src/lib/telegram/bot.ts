@@ -130,7 +130,7 @@ bot.on('photo', async (ctx) => {
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: "Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }." },
+                        { type: "text", text: `Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }. Today is ${new Date().toLocaleDateString()}. Use this context to resolve incomplete dates (e.g. if year is missing).` },
                         { type: "image_url", image_url: { url: fileLink.href } }
                     ]
                 }
