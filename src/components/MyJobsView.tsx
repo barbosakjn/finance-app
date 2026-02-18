@@ -29,15 +29,15 @@ export default function MyJobsView() {
     const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
 
-    // data de início da quinzena — persistida no localStorage
-    const [periodStart, setPeriodStart] = useState<string>(() => {
-        if (typeof window !== "undefined") {
-            return localStorage.getItem("periodStart") || "";
-        }
-        return "";
-    });
+    // data de início da quinzena — carregada do localStorage via useEffect (evita erro de hidratação SSR)
+    const [periodStart, setPeriodStart] = useState<string>("");
 
-    // periodEnd é sempre derivado do periodStart (sem estado separado)
+    useEffect(() => {
+        const saved = localStorage.getItem("periodStart");
+        if (saved) setPeriodStart(saved);
+    }, []);
+
+    // periodEnd é sempre derivado do periodStart
     const periodEnd = useMemo(() => {
         if (!periodStart) return "";
         const start = new Date(periodStart + "T12:00:00");
@@ -280,14 +280,17 @@ export default function MyJobsView() {
     const periodJobs = useMemo(() => {
         if (!periodStart) return [];
 
-        const start = new Date(periodStart);
-        const end = new Date(start);
+        const start = new Date(periodStart + "T00:00:00");
+        const end = new Date(periodStart + "T00:00:00");
         end.setDate(start.getDate() + 13);
         end.setHours(23, 59, 59, 999);
 
         return jobs.filter(job => {
-            const jobDate = new Date(job.date);
-            return jobDate >= start && jobDate <= end;
+            // job.date vem como ISO string da API — comparar só a parte da data
+            const jobDay = job.date.slice(0, 10);
+            const startDay = periodStart;
+            const endDay = end.toISOString().slice(0, 10);
+            return jobDay >= startDay && jobDay <= endDay;
         });
     }, [jobs, periodStart]);
 
