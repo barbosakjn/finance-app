@@ -29,18 +29,9 @@ export default function MyJobsView() {
     const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
 
-    // data de início da quinzena
+    // data de início da quinzena — preenchida manualmente pelo usuário
     const [periodStart, setPeriodStart] = useState("");
     const [periodEnd, setPeriodEnd] = useState("");
-
-    useEffect(() => {
-        // Inicializa com a quinzena correta baseada na data atual
-        // Importamos dinamicamente para evitar erro de SSR se necessário, ou assumimos que é client component
-        const { getFortnightStart, getFortnightEnd } = require("@/lib/utils");
-        const start = getFortnightStart(new Date());
-        setPeriodStart(start);
-        setPeriodEnd(getFortnightEnd(start));
-    }, []);
 
     // Atualiza o fim quando o início muda manualmente
     const handlePeriodChange = (e: React.ChangeEvent<HTMLInputElement>) => {
