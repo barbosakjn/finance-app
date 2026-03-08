@@ -130,7 +130,7 @@ bot.on('photo', async (ctx) => {
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: `Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }. Today is ${new Date().toLocaleDateString()}. Use this context to resolve incomplete dates (e.g. if year is missing).` },
+                        { type: "text", text: `Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }. Today's date is ${new Date().toISOString().split('T')[0]}. The current year is ${new Date().getFullYear()}. If the receipt does not explicitly mention a year, you MUST use ${new Date().getFullYear()}. DO NOT return past years like 2024 or 2025 unless explicitly printed.` },
                         { type: "image_url", image_url: { url: fileLink.href } }
                     ]
                 }
