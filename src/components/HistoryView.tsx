@@ -103,7 +103,7 @@ export default function HistoryView() {
             body: JSON.stringify({
                 ...newTransaction,
                 amount: parseFloat(newTransaction.amount),
-                date: new Date(newTransaction.date),
+                date: newTransaction.date,
                 status: 'PAID'
             }),
         });

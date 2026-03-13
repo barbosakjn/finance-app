@@ -130,7 +130,7 @@ bot.on('photo', async (ctx) => {
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: `Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }. Today is ${new Date().toLocaleDateString()}. Use this context to resolve incomplete dates (e.g. if year is missing).` },
+                        { type: "text", text: `Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }. The user is located in Brazil. Today is ${new Date().toLocaleDateString('pt-BR', {timeZone: 'America/Sao_Paulo'})}. Dates on the receipt are in the Brazilian format (DD/MM/YYYY or DD/MM). For example, 10/03 means March 10th. Use this context to resolve incomplete dates.` },
                         { type: "image_url", image_url: { url: fileLink.href } }
                     ]
                 }
