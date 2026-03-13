@@ -64,30 +64,6 @@ export default function HistoryView() {
         fetchTransactions();
     }, []);
 
-    const [recoveredReceipts, setRecoveredReceipts] = useState<any[]>([]);
-
-    useEffect(() => {
-        // Check for lost receipts
-        fetch('/api/recovery')
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data) && data.length > 0) {
-                    setRecoveredReceipts(data);
-                }
-            });
-    }, []);
-
-    const handleRecover = async () => {
-        const ids = recoveredReceipts.map(r => r.id);
-        await fetch('/api/recovery', {
-            method: 'POST',
-            body: JSON.stringify({ ids })
-        });
-        setRecoveredReceipts([]);
-        fetchTransactions(); // Refresh list
-        alert("Receipts moved to top of list!");
-    };
-
     const fetchTransactions = () => {
         // Add timestamp to prevent browser caching
         fetch(`/api/transactions?t=${Date.now()}`, { cache: 'no-store' })
@@ -313,32 +289,6 @@ export default function HistoryView() {
                     </Button>
                 </div>
             </div>
-
-            {/* Recovery & Debug Banner */}
-            {recoveredReceipts.length > 0 && (
-                <div className="mx-6 mb-4 bg-yellow-500/10 border border-yellow-500/50 p-4 rounded-xl">
-                    <div className="flex items-center justify-between mb-2">
-                        <div>
-                            <p className="font-bold text-yellow-600 text-sm">Diagnostic Tool found {recoveredReceipts.length} items</p>
-                            <p className="text-xs text-yellow-600/80">Check below why they might be hidden:</p>
-                        </div>
-                        <Button
-                            size="sm"
-                            className="bg-yellow-600 text-white hover:bg-yellow-700"
-                            onClick={handleRecover}
-                        >
-                            Force Fix (Move to Today)
-                        </Button>
-                    </div>
-                    <div className="space-y-1">
-                        {recoveredReceipts.map(r => (
-                            <div key={r.id} className="text-[10px] bg-white/50 p-1 rounded border border-yellow-200 text-yellow-800 font-mono">
-                                💰 ${r.amount} | Date: {r.date?.split('T')[0]} | Status: {r.status} | Cat: {r.category}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {/* Content Area */}
             <div className="flex-1 bg-background p-6 overflow-y-auto pb-24">
