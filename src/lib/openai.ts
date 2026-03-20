@@ -29,7 +29,7 @@ export async function parseReceipt(imageUrl: string): Promise<ParsedTransaction 
           
           Return ONLY a valid JSON object with keys: amount, date, description, category, type.
           If you cannot determine the values, estimate or use sensible defaults based on the current context.
-          The current date is ${new Date().toISOString().split('T')[0]}. Ensure the year is correct (e.g. 2026).
+          Today's date is ${new Date().toISOString().split('T')[0]}. If the year is not explicitly printed on the receipt, infer it logically: if the receipt's month is greater than the current month, it is from the PREVIOUS year. The generated date should NEVER be in the future.
           `
         },
         {
