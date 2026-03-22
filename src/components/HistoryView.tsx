@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Search, Plus, Filter, MoreHorizontal, Edit, Trash, Download } from "lucide-react";
+import { Search, Plus, Filter, MoreHorizontal, Edit, Trash, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,6 +46,8 @@ const CATEGORY_ICONS: Record<string, string> = {
 export default function HistoryView() {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [filter, setFilter] = useState<"EXPENSE" | "INCOME" | "CATEGORIES">("EXPENSE");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isSearching, setIsSearching] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<any>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -161,10 +163,20 @@ export default function HistoryView() {
         document.body.removeChild(link);
     };
 
-    const filteredTransactions = useMemo(
-        () => transactions.filter(t => t.type === filter && t.status === 'PAID'),
-        [transactions, filter]
-    );
+    const filteredTransactions = useMemo(() => {
+        return transactions.filter(t => {
+            if (t.type !== filter || t.status !== 'PAID') return false;
+            
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                const descMatch = t.description?.toLowerCase().includes(q);
+                const catMatch = t.category?.toLowerCase().includes(q);
+                const amountMatch = t.amount.toString().includes(q);
+                if (!descMatch && !catMatch && !amountMatch) return false;
+            }
+            return true;
+        });
+    }, [transactions, filter, searchQuery]);
 
     const sortedTransactions = useMemo(() => {
         const items = [...filteredTransactions];
@@ -202,7 +214,17 @@ export default function HistoryView() {
     const categoryData = useMemo(() => {
         if (filter !== "CATEGORIES") return [];
 
-        const expenses = transactions.filter(t => t.type === 'EXPENSE');
+        let expenses = transactions.filter(t => t.type === 'EXPENSE');
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            expenses = expenses.filter(t => {
+                const descMatch = t.description?.toLowerCase().includes(q);
+                const catMatch = t.category?.toLowerCase().includes(q);
+                const amountMatch = t.amount.toString().includes(q);
+                return descMatch || catMatch || amountMatch;
+            });
+        }
+
         const grouped = expenses.reduce((acc: any, t) => {
             const cat = t.category || 'Uncategorized';
             if (!acc[cat]) {
@@ -231,7 +253,7 @@ export default function HistoryView() {
                 monthlyBreakdown: Object.entries(monthlyGroup).map(([month, total]) => ({ month, total }))
             };
         });
-    }, [transactions, filter]);
+    }, [transactions, filter, searchQuery]);
 
     // Simple Bar Chart Logic (Percentage)
     const chartData = useMemo(() => {
@@ -264,9 +286,39 @@ export default function HistoryView() {
         <div className="flex flex-col h-full bg-background text-foreground">
             {/* Header Section */}
             <div className="p-6 pb-8 bg-card border-b border-border">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-xl font-bold text-primary">In & Out</h1>
-                    <Search className="h-5 w-5 opacity-70" />
+                <div className="flex justify-between items-center mb-6 h-9">
+                    {!isSearching ? (
+                        <>
+                            <h1 className="text-xl font-bold text-primary">In & Out</h1>
+                            <button onClick={() => setIsSearching(true)} className="p-2 -mr-2 rounded-full hover:bg-secondary/50 transition">
+                                <Search className="h-5 w-5 opacity-70" />
+                            </button>
+                        </>
+                    ) : (
+                        <div className="flex items-center w-full gap-2">
+                            <div className="relative w-full">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    autoFocus
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Buscar recibos, valores..."
+                                    className="h-9 pl-9 pr-9 bg-secondary border-none"
+                                />
+                                {searchQuery && (
+                                    <button 
+                                        onClick={() => setSearchQuery("")} 
+                                        className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+                            <button onClick={() => { setIsSearching(false); setSearchQuery(""); }} className="p-2 -mr-2 rounded-full hover:bg-secondary/50 transition">
+                                <span className="text-sm font-medium">Cancel</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="mb-2">
