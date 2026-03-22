@@ -123,6 +123,9 @@ bot.on('photo', async (ctx) => {
         const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
         const fileLink = await ctx.telegram.getFileLink(fileId);
 
+        // Compute today's date in YYYY-MM-DD format for Denver timezone
+        const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(new Date());
+
         // Analyze with OpenAI Vision
         const response = await openai.chat.completions.create({
             model: "gpt-4o",
@@ -130,7 +133,7 @@ bot.on('photo', async (ctx) => {
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: `Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }. The user is located in Brazil. Today's date is ${new Date().toLocaleDateString('pt-BR', {timeZone: 'America/Sao_Paulo'})}. Dates on the receipt are in the Brazilian format (DD/MM/YYYY or DD/MM). For example, 10/03 means March 10th. If the receipt does not explicitly mention a year, infer the year logically: if the month on the receipt is greater than the current month, the receipt is from the PREVIOUS year (${new Date().getFullYear() - 1}). The generated date should NEVER be in the future. Use this context to resolve incomplete dates.` },
+                        { type: "text", text: `Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }. The user is located in Denver, USA. Today's date is ${todayDateStr}. Dates on the receipt might be in US (MM/DD/YYYY) or Brazilian (DD/MM/YYYY) format. If you CANNOT find a valid date on the receipt, you MUST use exactly today's date (${todayDateStr}) as a fallback. DO NOT hallucinate future dates. If the month on the receipt is greater than the current month, it is from the PREVIOUS year. The generated date should NEVER be in the future. If no clear description/name is found, use 'Despesa sem nome'.` },
                         { type: "image_url", image_url: { url: fileLink.href } }
                     ]
                 }
@@ -145,7 +148,11 @@ bot.on('photo', async (ctx) => {
 
         const data = JSON.parse(cleanJson);
 
-        if (data.amount && data.description) {
+        // Fallbacks se a IA não retornar os campos
+        if (!data.description) data.description = 'Despesa sem nome';
+        if (!data.date) data.date = todayDateStr;
+
+        if (data.amount !== undefined && data.amount !== null) {
             const transaction = await prisma.transaction.create({
                 data: {
                     description: data.description,
@@ -153,7 +160,7 @@ bot.on('photo', async (ctx) => {
                     type: 'EXPENSE',
                     status: 'PAID',
                     // Fix Date: If AI returns YYYY-MM-DD, append T12:00:00 to prevent timezone rollback
-                    date: data.date ? new Date(`${data.date}T12:00:00`) : new Date(),
+                    date: new Date(`${data.date}T12:00:00`),
                     category: 'Uncategorized', // Temporary
                     isBill: false
                 }
