@@ -127,13 +127,17 @@ bot.on('photo', async (ctx) => {
         const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(new Date());
 
         // Analyze with OpenAI Vision
+        // Explicitly compute today's date in Denver time for context to avoid Vercel UTC issues
+        const todayStr = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', dateStyle: 'short' }).format(new Date());
+        const currentYearStr = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', year: 'numeric' }).format(new Date());
+
         const response = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: [
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: `Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }. The user is located in Denver, USA. Today's date is ${todayDateStr}. Dates on the receipt might be in US (MM/DD/YYYY) or Brazilian (DD/MM/YYYY) format. If you CANNOT find a valid date on the receipt, you MUST use exactly today's date (${todayDateStr}) as a fallback. DO NOT hallucinate future dates. If the month on the receipt is greater than the current month, it is from the PREVIOUS year. The generated date should NEVER be in the future. If no clear description/name is found, use 'Despesa sem nome'.` },
+                        { type: "text", text: `Analyze this receipt. Return ONLY a JSON object with: { description: string, amount: number, date: string (YYYY-MM-DD) }. The user is located in Denver, USA. Today's date is ${todayDateStr}. Dates on the receipt might be in US (MM/DD/YYYY) or Brazilian (DD/MM/YYYY) format. CRUCIAL: If the receipt is missing the year or if the year is ambiguous, you MUST use the current year (${currentYearStr}). If you CANNOT find a valid date, use exactly today's date (${todayDateStr}). DO NOT hallucinate future dates like 2025. If the month on the receipt is greater than the current month, it is from the PREVIOUS year. The generated date should NEVER be in the future. If no clear description/name is found, use 'Despesa sem nome'.` },
                         { type: "image_url", image_url: { url: fileLink.href } }
                     ]
                 }
