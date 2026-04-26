@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Dashboard - CSV Visualizer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#09090b',
+                        card: '#18181b',
+                        primary: '#fcd34d',
+                        text: '#fafafa',
+                        muted: '#a1a1aa'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse for CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        body { background-color: #09090b; color: #fafafa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .drag-active { border-color: #fcd34d !important; background-color: rgba(252, 211, 77, 0.1) !important; }
+    </style>
+</head>
+<body class="min-h-screen p-6 antialiased">
+    
+    <div class="max-w-5xl mx-auto space-y-6">
+        <!-- Header -->
+        <header class="flex justify-between items-center pb-4 border-b border-zinc-800">
+            <div>
+                <h1 class="text-2xl font-bold text-primary">Finance Dashboard</h1>
+                <p class="text-sm text-muted">Offline CSV Visualizer</p>
+            </div>
+            <button onclick="location.reload()" class="text-sm bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-md transition" id="resetBtn" style="display: none;">
+                Carregar Outro
+            </button>
+        </header>
+
+        <!-- Dropzone -->
+        <div id="dropzone" class="border-2 border-dashed border-zinc-700 rounded-xl p-12 text-center transition-colors hover:border-zinc-500 cursor-pointer bg-card flex flex-col items-center justify-center min-h-[300px]">
+            <svg class="w-12 h-12 text-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+            <h3 class="text-lg font-medium mb-1">Arraste seu arquivo CSV aqui</h3>
+            <p class="text-sm text-muted mb-4">ou clique para selecionar</p>
+            <input type="file" id="fileInput" accept=".csv" class="hidden">
+            <button class="bg-primary text-black font-medium text-sm px-6 py-2 rounded-full hover:bg-yellow-400 transition" onclick="document.getElementById('fileInput').click()">
+                Selecionar Arquivo
+            </button>
+        </div>
+
+        <!-- Dashboard Content (Hidden Initially) -->
+        <div id="dashboard" class="hidden space-y-6 animate-fade-in">
+            <!-- Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-card p-5 rounded-xl border border-zinc-800 shadow-sm">
+                    <p class="text-xs text-muted uppercase tracking-wider mb-1">Total Gasto</p>
+                    <h3 class="text-3xl font-bold text-red-400" id="totalSpent">$0.00</h3>
+                </div>
+                <div class="bg-card p-5 rounded-xl border border-zinc-800 shadow-sm">
+                    <p class="text-xs text-muted uppercase tracking-wider mb-1">Transações (Despesas)</p>
+                    <h3 class="text-3xl font-bold" id="totalTx">0</h3>
+                </div>
+                <div class="bg-card p-5 rounded-xl border border-zinc-800 shadow-sm">
+                    <p class="text-xs text-muted uppercase tracking-wider mb-1">Maior Categoria</p>
+                    <h3 class="text-xl font-bold text-primary truncate" id="topCategory">-</h3>
+                    <p class="text-xs text-muted" id="topCategoryAmount">$0.00</p>
+                </div>
+            </div>
+
+            <!-- Charts & Table -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Donut Chart -->
+                <div class="bg-card p-6 rounded-xl border border-zinc-800 shadow-sm flex flex-col items-center">
+                    <h3 class="text-sm font-semibold w-full text-left mb-4">Distribuição por Categoria</h3>
+                    <div class="relative w-full max-w-[300px] aspect-square">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Summary Table -->
+                <div class="bg-card p-6 rounded-xl border border-zinc-800 shadow-sm overflow-hidden flex flex-col">
+                    <h3 class="text-sm font-semibold mb-4">Raio-X de Tabela</h3>
+                    <div class="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-muted uppercase bg-zinc-900/50 sticky top-0">
+                                <tr>
+                                    <th class="px-3 py-2 rounded-tl-md">Categoria</th>
+                                    <th class="px-3 py-2 text-right">Qtd</th>
+                                    <th class="px-3 py-2 text-right">Média</th>
+                                    <th class="px-3 py-2 text-right rounded-tr-md">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody" class="divide-y divide-zinc-800/50">
+                                <!-- injected via js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Setup Drag & Drop
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => dropzone.classList.add('drag-active'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => dropzone.classList.remove('drag-active'), false);
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            handleFiles(files);
+        });
+
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+            if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
+                alert("Por favor, selecione um arquivo válido (.csv)");
+                return;
+            }
+
+            // Parse CSV
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processData(results.data);
+                }
+            });
+        }
+
+        function processData(data) {
+            // Filter only EXPENSE
+            const expenses = data.filter(d => d.Type === 'EXPENSE' || d.type === 'EXPENSE' || (d.Amount && d.Amount < 0) || (d.Type && typeof d.Type === 'string' && d.Type.toUpperCase().includes('EXPENSE')));
+            
+            let totalSpent = 0;
+            const categoryMap = {};
+
+            expenses.forEach(row => {
+                // Ensure number
+                const amount = Math.abs(parseFloat(row.Amount || row.amount || 0));
+                totalSpent += amount;
+
+                const cat = row.Category || row.category || 'Outros';
+                if (!categoryMap[cat]) categoryMap[cat] = { total: 0, count: 0 };
+                categoryMap[cat].total += amount;
+                categoryMap[cat].count += 1;
+            });
+
+            // Sort Categories
+            const sortedCats = Object.entries(categoryMap)
+                .map(([name, stats]) => ({ name, ...stats }))
+                .sort((a, b) => b.total - a.total);
+
+            // Update DOM Cards
+            document.getElementById('totalSpent').textContent = `$${totalSpent.toFixed(2)}`;
+            document.getElementById('totalTx').textContent = expenses.length;
+            
+            if (sortedCats.length > 0) {
+                document.getElementById('topCategory').textContent = sortedCats[0].name;
+                document.getElementById('topCategoryAmount').textContent = `$${sortedCats[0].total.toFixed(2)}`;
+            }
+
+            // Update Table
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            sortedCats.forEach(cat => {
+                const avg = cat.total / cat.count;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-3 py-3 font-medium text-white">${cat.name}</td>
+                    <td class="px-3 py-3 text-right text-muted">${cat.count}</td>
+                    <td class="px-3 py-3 text-right text-muted">$${avg.toFixed(2)}</td>
+                    <td class="px-3 py-3 text-right font-bold text-red-400">$${cat.total.toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Render Chart
+            renderChart(sortedCats);
+
+            // Switch UI
+            document.getElementById('dropzone').style.display = 'none';
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('resetBtn').style.display = 'block';
+        }
+
+        // Colors for chart
+        const COLORS = [
+            '#fcd34d', '#f87171', '#60a5fa', '#34d399', '#a78bfa', 
+            '#fb923c', '#2dd4bf', '#fbbf24', '#f472b6', '#38bdf8'
+        ];
+
+        let myChart = null;
+
+        function renderChart(categories) {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            if (myChart) myChart.destroy(); // destroy old chart if exists
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: categories.map(c => c.name),
+                    datasets: [{
+                        data: categories.map(c => c.total),
+                        backgroundColor: COLORS,
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {
+                        legend: {
+                            display: false // We use the table as the legend basically
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

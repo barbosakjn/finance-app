@@ -141,11 +141,24 @@ export default function HistoryView() {
         }
     };
 
+    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+    const [exportMonth, setExportMonth] = useState<string>('');
+
     const handleExport = () => {
+        let exportData = transactions;
+        if (exportMonth) {
+            exportData = transactions.filter(t => t.date.startsWith(exportMonth));
+        }
+
+        if (exportData.length === 0) {
+            alert("No data found for the selected month.");
+            return;
+        }
+
         const headers = ["Date", "Description", "Category", "Type", "Amount", "Status"];
         const csvContent = [
             headers.join(","),
-            ...transactions.map(t => [
+            ...exportData.map(t => [
                 new Date(t.date).toLocaleDateString(),
                 `"${t.description.replace(/"/g, '""')}"`, // Escape quotes
                 t.category,
@@ -159,10 +172,12 @@ export default function HistoryView() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `transactions_export_${getMountainToday()}.csv`);
+        link.setAttribute("download", `transactions_export_${exportMonth || 'all'}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        setIsExportDialogOpen(false);
     };
 
     const filteredTransactions = useMemo(() => {
@@ -372,7 +387,13 @@ export default function HistoryView() {
                     <div className="flex items-center gap-3">
                         {/* Export Button */}
                         <button
-                            onClick={handleExport}
+                            onClick={() => {
+                                const today = new Date();
+                                const yyyy = today.getFullYear();
+                                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                                setExportMonth(`${yyyy}-${mm}`);
+                                setIsExportDialogOpen(true);
+                            }}
                             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
                             title="Export to CSV"
                         >
@@ -738,6 +759,28 @@ export default function HistoryView() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
                         <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Export Dialog */}
+            <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Exportar CSV</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <Label>Selecione o Mês para Exportar</Label>
+                        <Input
+                            type="month"
+                            value={exportMonth}
+                            onChange={(e) => setExportMonth(e.target.value)}
+                        />
+                        <p className="text-[10px] text-muted-foreground">Deixe em branco para exportar todo o histórico.</p>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleExport}>Baixar CSV</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
