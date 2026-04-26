@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { startDate } = body as { startDate: string };
+        const { startDate, price } = body as { startDate: string, price?: number };
 
         if (!startDate) {
             return NextResponse.json(
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
         });
 
         const jobsToCreate = [];
+        const routePrice = price !== undefined ? Number(price) : 150;
 
         // Gera 14 dias a partir da data de início (0 a 13)
         for (let i = 0; i < 14; i++) {
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
                         pickup: "Mountain View/Timpanogos",
                         delivery: "Ogden Regional - ROUTE",
                         time: "ROUTE",
-                        price: 150,
+                        price: routePrice,
                         // type não existe no schema, é inferido pelo frontend ou contexto
                     });
                 }

@@ -22,6 +22,9 @@ type NewJobForm = {
     price: string;
 };
 
+const getMountainToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' });
+
+
 export default function MyJobsView() {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(false);
@@ -31,6 +34,7 @@ export default function MyJobsView() {
 
     // data de início da quinzena — carregada do localStorage via useEffect (evita erro de hidratação SSR)
     const [periodStart, setPeriodStart] = useState<string>("");
+    const [routePrice, setRoutePrice] = useState<number>(150);
 
     useEffect(() => {
         const saved = localStorage.getItem("periodStart");
@@ -48,7 +52,7 @@ export default function MyJobsView() {
 
     // formulário de extra job
     const [newJob, setNewJob] = useState<NewJobForm>({
-        date: new Date().toISOString().split("T")[0],
+        date: getMountainToday(),
         pickup: "",
         delivery: "",
         time: "",
@@ -154,6 +158,7 @@ export default function MyJobsView() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     startDate: periodStart,
+                    price: routePrice,
                 }),
             });
 
@@ -250,7 +255,7 @@ export default function MyJobsView() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `my_jobs_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute("download", `my_jobs_export_${getMountainToday()}.csv`);
         link.style.visibility = "hidden";
         document.body.appendChild(link);
         link.click();
@@ -280,16 +285,17 @@ export default function MyJobsView() {
     const periodJobs = useMemo(() => {
         if (!periodStart) return [];
 
-        const start = new Date(periodStart + "T00:00:00");
-        const end = new Date(periodStart + "T00:00:00");
+        // Using 12:00:00Z avoids local timezone shift bugs
+        const start = new Date(periodStart + "T12:00:00Z");
+        const end = new Date(start);
         end.setDate(start.getDate() + 13);
-        end.setHours(23, 59, 59, 999);
+        
+        const startDay = periodStart;
+        const endDay = end.toISOString().split("T")[0];
 
         return jobs.filter(job => {
-            // job.date vem como ISO string da API — comparar só a parte da data
-            const jobDay = job.date.slice(0, 10);
-            const startDay = periodStart;
-            const endDay = end.toISOString().slice(0, 10);
+            // job.date includes T time string, split extracts YYYY-MM-DD securely
+            const jobDay = job.date.split("T")[0];
             return jobDay >= startDay && jobDay <= endDay;
         });
     }, [jobs, periodStart]);
@@ -384,6 +390,21 @@ export default function MyJobsView() {
                         )}
                         <p className="text-[10px] text-muted-foreground">
                             Define o período de importação (14 dias).
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2 border-t border-border/50 pt-3">
+                        <label className="text-xs text-muted-foreground font-medium">
+                            VALOR DA ROTA (POR UNIDADE)
+                        </label>
+                        <input
+                            type="number"
+                            className="bg-background border border-input rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary w-full"
+                            value={routePrice}
+                            onChange={(e) => setRoutePrice(Number(e.target.value))}
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                            Valor para cada uma das 2 rotas geradas por dia.
                         </p>
                     </div>
 
