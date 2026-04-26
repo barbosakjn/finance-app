@@ -172,9 +172,13 @@
                 totalSpent += amount;
 
                 const cat = row.Category || row.category || 'Outros';
-                if (!categoryMap[cat]) categoryMap[cat] = { total: 0, count: 0 };
+                if (!categoryMap[cat]) categoryMap[cat] = { total: 0, count: 0, items: [] };
                 categoryMap[cat].total += amount;
                 categoryMap[cat].count += 1;
+
+                const date = row.Date || row.date || '';
+                const desc = row.Description || row.description || '';
+                categoryMap[cat].items.push({ date, desc, amount });
             });
 
             // Sort Categories
@@ -194,16 +198,49 @@
             // Update Table
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
-            sortedCats.forEach(cat => {
+            sortedCats.forEach((cat, index) => {
                 const avg = cat.total / cat.count;
                 const tr = document.createElement('tr');
+                tr.className = "cursor-pointer hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/50";
+                tr.onclick = () => {
+                    const subTable = document.getElementById(`sub-${index}`);
+                    const icon = document.getElementById(`icon-${index}`);
+                    subTable.classList.toggle('hidden');
+                    if(subTable.classList.contains('hidden')){
+                        icon.classList.remove('rotate-180');
+                    } else {
+                        icon.classList.add('rotate-180');
+                    }
+                };
+                
                 tr.innerHTML = `
-                    <td class="px-3 py-3 font-medium text-white">${cat.name}</td>
+                    <td class="px-3 py-3 font-medium text-white flex items-center gap-2">
+                        <svg id="icon-${index}" class="w-4 h-4 text-muted transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        ${cat.name}
+                    </td>
                     <td class="px-3 py-3 text-right text-muted">${cat.count}</td>
                     <td class="px-3 py-3 text-right text-muted">$${avg.toFixed(2)}</td>
                     <td class="px-3 py-3 text-right font-bold text-red-400">$${cat.total.toFixed(2)}</td>
                 `;
                 tbody.appendChild(tr);
+
+                const subTr = document.createElement('tr');
+                subTr.id = `sub-${index}`;
+                subTr.className = "hidden bg-zinc-900/30";
+                
+                let subHtml = `<td colspan="4" class="p-0 border-b border-zinc-800"><div class="p-4"><table class="w-full text-xs text-left"><thead class="text-muted/70 uppercase"><tr><th class="pb-2" style="width:100px;">Data</th><th class="pb-2">Descrição</th><th class="pb-2 text-right">Valor</th></tr></thead><tbody class="divide-y divide-zinc-800/30">`;
+                
+                cat.items.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(item => {
+                    subHtml += `<tr>
+                        <td class="py-1.5 text-muted">${item.date}</td>
+                        <td class="py-1.5 text-white truncate max-w-[150px] sm:max-w-[300px]">${item.desc}</td>
+                        <td class="py-1.5 text-right text-red-400">$${item.amount.toFixed(2)}</td>
+                    </tr>`;
+                });
+
+                subHtml += `</tbody></table></div></td>`;
+                subTr.innerHTML = subHtml;
+                tbody.appendChild(subTr);
             });
 
             // Render Chart
