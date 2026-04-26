@@ -49,6 +49,8 @@ type Bill = {
     fixedExpenseId?: string | null;
 };
 
+const getMountainToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' });
+
 // Sortable Item Component
 function SortableBillItem({ bill, toggleStatus, onEdit, onDelete }: { bill: Bill, toggleStatus: (b: Bill) => void, onEdit: (b: Bill) => void, onDelete: (id: string) => void }) {
     const {
@@ -251,7 +253,7 @@ export default function BillsView() {
         const payload = {
             ...editingBill,
             type: "EXPENSE",
-            date: editingBill.date || new Date().toISOString(),
+            date: editingBill.date || getMountainToday(),
             status: editingBill.status || "PENDING",
             isBill: true, // Always true for items created effectively in BillsView
         };
@@ -380,7 +382,7 @@ export default function BillsView() {
             <Button
                 onClick={() => {
                     setEditingBill({
-                        date: new Date().toISOString().split('T')[0],
+                        date: getMountainToday(),
                         amount: 0,
                         description: "",
                         status: "PENDING"

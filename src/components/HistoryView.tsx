@@ -43,6 +43,8 @@ const CATEGORY_ICONS: Record<string, string> = {
     "IA Stuff": "/categories/ia_stuff.png"
 };
 
+const getMountainToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' });
+
 export default function HistoryView() {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [filter, setFilter] = useState<"EXPENSE" | "INCOME" | "CATEGORIES">("EXPENSE");
@@ -56,7 +58,7 @@ export default function HistoryView() {
         amount: '',
         category: 'Mercado',
         type: 'EXPENSE',
-        date: new Date().toISOString().split('T')[0]
+        date: getMountainToday()
     });
 
     const [sortBy, setSortBy] = useState<SortBy>("NEWEST");
@@ -92,7 +94,7 @@ export default function HistoryView() {
             amount: '',
             category: 'Mercado',
             type: 'EXPENSE',
-            date: new Date().toISOString().split('T')[0]
+            date: getMountainToday()
         });
     };
 
@@ -157,7 +159,7 @@ export default function HistoryView() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `transactions_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute("download", `transactions_export_${getMountainToday()}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
