@@ -74,6 +74,36 @@ export async function POST(req: Request) {
   }
 }
 
+// PUT /api/jobs -> atualiza o preço de um job
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const { id, price } = body;
+
+    if (!id || price == null) {
+      return NextResponse.json(
+        { error: 'Campos obrigatórios: id, price' },
+        { status: 400 }
+      );
+    }
+
+    const numericPrice = Number(price);
+
+    const job = await prisma.jobExtra.update({
+      where: { id },
+      data: { price: numericPrice },
+    });
+
+    return NextResponse.json(job);
+  } catch (error) {
+    console.error('Error updating job:', error);
+    return NextResponse.json(
+      { error: 'Erro ao atualizar job' },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE /api/jobs?id=JOB_ID  -> apaga um job
 export async function DELETE(req: Request) {
   try {

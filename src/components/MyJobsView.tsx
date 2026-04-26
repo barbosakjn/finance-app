@@ -178,6 +178,41 @@ export default function MyJobsView() {
         }
     }
 
+    // ===== EDITAR PREÇO DO JOB =====
+    async function handleEditJobPrice(id: string, currentPrice: number) {
+        const newPriceStr = prompt(`Digite o novo valor para este job:`, currentPrice.toString());
+        if (newPriceStr === null) return; // cancelou
+        
+        const newPrice = parseFloat(newPriceStr.trim());
+        if (isNaN(newPrice) || newPrice < 0) {
+            alert("Valor inválido.");
+            return;
+        }
+
+        if (newPrice === currentPrice) return;
+
+        try {
+            setLoading(true);
+            const res = await fetch(`/api/jobs`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, price: newPrice }),
+            });
+
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.error || "Erro ao atualizar valor do job");
+            }
+
+            await loadJobs();
+        } catch (err: any) {
+            console.error(err);
+            alert(err.message || "Erro ao atualizar valor do job");
+        } finally {
+            setLoading(false);
+        }
+    }
+
     // ===== DELETAR JOB (SINGLE) =====
     async function handleDeleteJob(id: string) {
         if (!confirm("Tem certeza que deseja apagar esse job?")) return;
@@ -598,8 +633,20 @@ export default function MyJobsView() {
                                                         </summary>
                                                         <div className="absolute right-0 mt-1 w-32 bg-popover border border-border rounded-md shadow-lg text-xs z-10 py-1">
                                                             <button
+                                                                className="block w-full text-left px-3 py-2 hover:bg-secondary text-foreground"
+                                                                onClick={(e) => {
+                                                                    e.currentTarget.closest("details")?.removeAttribute("open");
+                                                                    handleEditJobPrice(job.id, job.price);
+                                                                }}
+                                                            >
+                                                                Editar Valor
+                                                            </button>
+                                                            <button
                                                                 className="block w-full text-left px-3 py-2 hover:bg-secondary text-red-400"
-                                                                onClick={() => handleDeleteJob(job.id)}
+                                                                onClick={(e) => {
+                                                                    e.currentTarget.closest("details")?.removeAttribute("open");
+                                                                    handleDeleteJob(job.id);
+                                                                }}
                                                             >
                                                                 Apagar
                                                             </button>
